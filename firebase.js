@@ -1,10 +1,6 @@
 
-
-import { initializeApp } from "firebase/app";
-import { getFirestore } from "firebase/firestore";
-
 const firebaseConfig = {
- apiKey: "AIzaSyBEA0MNBi-h5N-JSjvbwPurORuGMU58I1I",
+  apiKey: "AIzaSyBEA0MNBi-h5N-JSjvbwPurORuGMU58I1I",
   authDomain: "sewaconnect-33ba4.firebaseapp.com",
   projectId: "sewaconnect-33ba4",
   storageBucket: "sewaconnect-33ba4.firebasestorage.app",
@@ -13,8 +9,10 @@ const firebaseConfig = {
   measurementId: "G-Y9FFNQS650"
 };
 
-// Initialize Firebase
-const app = initializeApp(firebaseConfig);
+if (window.firebase) {
+  const app = window.firebase.apps.length
+    ? window.firebase.app()
+    : window.firebase.initializeApp(firebaseConfig);
 
-// Initialize Cloud Firestore and export db
-export const db = getFirestore(app);
+  window.sevaFirestore = app.firestore();
+}

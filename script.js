@@ -12,14 +12,52 @@ const modalTitle = $("#modalTitle");
 const modalDescription = $("#modalDescription");
 const modalEyebrow = $("#modalEyebrow");
 const modalSymbol = $("#modalSymbol");
-const modalService = $("#modalService");
-const modalLocation = $("#modalLocation");
 const requestForm = $("#requestForm");
 const successMessage = $("#successMessage");
 const toast = $("#toast");
 
 let toastTimer;
 let currentModalType = "booking";
+
+function registrationForm(type) {
+    if (type === "login") {
+        return `
+            <label>Full name<input name="name" required autocomplete="name" placeholder="Enter your full name" /></label>
+            <label>Mobile number<input name="phone" required inputmode="tel" pattern="[0-9+ ()-]{8,16}" autocomplete="tel" placeholder="Enter mobile number" /></label>
+            <label>Email address<input name="email" type="email" required autocomplete="email" placeholder="Enter your email address" /></label>
+        `;
+    }
+
+    if (type === "provider") {
+        return `
+            <label>Full name<input name="name" required autocomplete="name" placeholder="Enter your full name" /></label>
+            <label>Mobile number<input name="phone" required inputmode="tel" pattern="[0-9+ ()-]{8,16}" autocomplete="tel" placeholder="Enter mobile number" /></label>
+            <label>Vehicle number<input name="vehicleNumber" required pattern="[A-Za-z0-9 -]{4,20}" placeholder="Enter vehicle number" /></label>
+            <label>Vehicle type<select name="vehicleType" required><option value="">Choose vehicle type</option><option>Car</option><option>Bike</option></select></label>
+        `;
+    }
+
+    return `
+        <label>Your name<input name="name" required autocomplete="name" placeholder="Enter your name" /></label>
+        <label>Phone number<input name="phone" required inputmode="tel" pattern="[0-9+ ()-]{8,16}" autocomplete="tel" placeholder="Enter phone number" /></label>
+        <label>Service needed<select name="service" id="modalService" required><option value="">Choose a service</option><option>Transport</option><option>Agriculture &amp; equipment</option><option>Repair &amp; maintenance</option><option>Home services</option><option>Construction</option><option>Other local services</option></select></label>
+        <label>Village / area<input name="location" id="modalLocation" required placeholder="Enter your village or area" /></label>
+    `;
+}
+
+function setFormError(message = "") {
+    const formError = $("#formError");
+    if (!formError) return;
+    formError.textContent = message;
+    formError.hidden = !message;
+}
+
+function setSubmitLoading(isLoading) {
+    const submitButton = $("#modalSubmit");
+    if (!submitButton) return;
+    submitButton.disabled = isLoading;
+    submitButton.innerHTML = isLoading ? "Saving <span aria-hidden=\"true\">...</span>" : "Continue <span>→</span>";
+}
 
 /* Set current year in footer */
 const yearElement = $("#year");
@@ -52,28 +90,34 @@ function openModal(type = "booking", category = "") {
     requestForm.reset();
     requestForm.hidden = false;
     successMessage.hidden = true;
+    setFormError();
+    setSubmitLoading(false);
+    requestForm.innerHTML = `${registrationForm(type)}
+        <button class="btn btn-primary modal-submit" type="submit" id="modalSubmit">Continue <span>→</span></button>
+        <small class="form-note">${type === "booking" ? "Your booking request will be saved securely." : "Registration details will be saved to Seva Connect."}</small>
+        <p class="form-error" id="formError" role="alert" hidden></p>`;
 
     const modalContent = {
 
         login: {
             symbol: "✦",
             eyebrow: "WELCOME TO SEVA CONNECT",
-            title: "Customer access preview",
-            description: "This prototype does not have account login yet. Use the form below to preview a service request."
+            title: "Customer registration",
+            description: "Register your details to get started. This form does not create or verify an account."
         },
 
         provider: {
             symbol: "↗",
             eyebrow: "GROW WITH YOUR COMMUNITY",
-            title: "Provider interest preview",
-            description: "This prototype can preview your interest in joining as a provider. It does not create a provider account yet."
+            title: "Join as a service provider",
+            description: "Share your details to join Seva Connect. This form does not create or verify an account."
         },
 
         booking: {
             symbol: "⌖",
             eyebrow: "LET'S FIND YOUR SERVICE",
             title: "Request a service",
-            description: "Tell us what you need. This demo creates a local preview only."
+            description: "Tell us what you need and send a booking request."
         }
     };
 
@@ -85,6 +129,7 @@ function openModal(type = "booking", category = "") {
     if (modalDescription) modalDescription.textContent = content.description;
 
     /* Preselect service category */
+    const modalService = $("#modalService");
     if (modalService) {
 
         modalService.value = "";
@@ -105,6 +150,7 @@ function openModal(type = "booking", category = "") {
 
     /* Copy hero location into modal */
     const heroLocation = $("#heroLocation");
+    const modalLocation = $("#modalLocation");
 
     if (modalLocation && heroLocation && heroLocation.value.trim()) {
         modalLocation.value = heroLocation.value.trim();
@@ -323,57 +369,70 @@ $$("[data-footer-category]").forEach(link => {
 });
 
 /* Submit request form */
-requestForm?.addEventListener("submit", event => {
+requestForm?.addEventListener("submit", async event => {
 
     event.preventDefault();
 
     if (!requestForm.reportValidity()) return;
 
     const formData = new FormData(requestForm);
-
     const name = String(formData.get("name") || "").trim();
-
     const phone = String(formData.get("phone") || "").trim();
+    setFormError();
+    setSubmitLoading(true);
 
-    const service = String(formData.get("service") || "").trim();
+    try {
+        if (!window.sevaFirestore || !window.firebase) {
+            throw new Error("Firebase is unavailable. Check the Firebase scripts and internet connection.");
+        }
 
-    const location = String(formData.get("location") || "").trim();
+        let savedHeading = "Registration saved!";
+        let savedText = `Thanks, ${name}. Your details were saved to Seva Connect.`;
+        let documentData;
+        let collectionName;
+        const serverTimestamp = window.firebase.firestore.FieldValue.serverTimestamp();
 
-    if (!name || !phone || !service || !location) {
+        if (currentModalType === "login") {
+            const email = String(formData.get("email") || "").trim();
+            if (!name || !phone || !email) throw new Error("Please complete all required fields.");
+            collectionName = "customers";
+            documentData = { role: "customer", fullName: name, mobileNumber: phone, emailAddress: email, createdAt: serverTimestamp };
+        } else if (currentModalType === "provider") {
+            const vehicleNumber = String(formData.get("vehicleNumber") || "").trim().toUpperCase();
+            const vehicleType = String(formData.get("vehicleType") || "").trim();
+            if (!name || !phone || !vehicleNumber || !["Car", "Bike"].includes(vehicleType)) {
+                throw new Error("Please complete all required fields.");
+            }
+            collectionName = "providers";
+            documentData = { role: "provider", fullName: name, mobileNumber: phone, vehicleNumber, vehicleType, createdAt: serverTimestamp };
+            savedHeading = "Provider details saved!";
+            savedText = `Thanks, ${name}. Your provider registration was saved to Seva Connect.`;
+        } else {
+            const service = String(formData.get("service") || "").trim();
+            const location = String(formData.get("location") || "").trim();
+            if (!name || !phone || !service || !location) throw new Error("Please complete all fields.");
+            collectionName = "bookingRequests";
+            documentData = { customerName: name, phoneNumber: phone, service, location, status: "pending", createdAt: serverTimestamp };
+            savedHeading = "Booking request sent!";
+            savedText = `Thanks, ${name}. Your ${service} request for ${location} was saved.`;
+        }
 
-        showToast("Please complete all fields.");
+        await window.sevaFirestore.collection(collectionName).add(documentData);
 
-        return;
+        requestForm.hidden = true;
+        successMessage.hidden = false;
 
+        const successHeading = $("h3", successMessage);
+        const successText = $("p", successMessage);
+        if (successHeading) successHeading.textContent = savedHeading;
+        if (successText) successText.textContent = savedText;
+    } catch (error) {
+        console.error("Firebase write failed:", error);
+        setSubmitLoading(false);
+        setFormError(error?.code === "permission-denied"
+            ? "Firebase rejected the submission. Please check the Firestore rules."
+            : "We could not save your details. Please check your connection and try again.");
     }
-
-    /* Front-end demo confirmation only */
-    requestForm.hidden = true;
-
-    successMessage.hidden = false;
-
-    const successHeading = $("h3", successMessage);
-
-    const successText = $("p", successMessage);
-
-    if (successHeading) {
-
-        successHeading.textContent =
-            currentModalType === "provider"
-                ? "Interest preview created!"
-                : currentModalType === "login"
-                    ? "Demo form completed!"
-                    : "Request preview created!";
-
-    }
-
-    if (successText) {
-
-        successText.textContent =
-            `Thanks, ${name}. Your ${service} request for ${location} has been previewed. This demo does not send or save your details.`;
-
-    }
-
 });
 
 /* Mobile menu */

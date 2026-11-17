@@ -145,12 +145,16 @@
         <label>Service needed<select name="service" id="modalService" required><option value="">Choose a service</option><option>Transport</option><option>Agriculture & equipment</option><option>Repair & maintenance</option><option>Home services</option><option>Construction</option><option>Other local services</option></select></label>
         <label>Village / area<input name="location" id="modalLocation" required placeholder="Enter your village or area" /></label>
         <button class="btn btn-primary modal-submit" type="submit" id="modalSubmit">Continue <span>→</span></button>
-        <small class="form-note">Prototype only: this demo does not send or store your information.</small>
+        <small class="form-note">Your booking request will be saved securely.</small>
+        <p class="form-error" id="formError" role="alert" hidden></p>
       </form>
-      <div class="success-message" id="successMessage" hidden><span>✓</span><h3>Request preview created!</h3><p>This front-end demo is working locally. Connect a backend to send real booking requests.</p><button class="btn btn-primary" id="successClose">Got it</button></div>
+      <div class="success-message" id="successMessage" hidden><span>✓</span><h3>Booking request sent!</h3><p>Your request was saved successfully.</p><button class="btn btn-primary" id="successClose">Got it</button></div>
     </section>
   </div>
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
+  <script src="https://www.gstatic.com/firebasejs/11.10.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/11.10.0/firebase-firestore-compat.js"></script>
+  <script src="firebase.js"></script>
   <script src="script.js"></script>
 </body>
 </html>

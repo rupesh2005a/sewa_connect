@@ -1,0 +1,84 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /customers/{documentId} {
+      allow read, update, delete: if false;
+      allow create: if
+        request.resource.data.keys().hasOnly([
+          'role',
+          'fullName',
+          'mobileNumber',
+          'emailAddress',
+          'createdAt'
+        ]) &&
+        request.resource.data.role == 'customer' &&
+        request.resource.data.fullName is string &&
+        request.resource.data.fullName.size() >= 2 &&
+        request.resource.data.fullName.size() <= 100 &&
+        request.resource.data.mobileNumber is string &&
+        request.resource.data.mobileNumber.size() >= 8 &&
+        request.resource.data.mobileNumber.size() <= 16 &&
+        request.resource.data.emailAddress is string &&
+        request.resource.data.emailAddress.size() >= 3 &&
+        request.resource.data.emailAddress.size() <= 254 &&
+        request.resource.data.createdAt == request.time;
+    }
+
+    match /providers/{documentId} {
+      allow read, update, delete: if false;
+      allow create: if
+        request.resource.data.keys().hasOnly([
+          'role',
+          'fullName',
+          'mobileNumber',
+          'vehicleNumber',
+          'vehicleType',
+          'createdAt'
+        ]) &&
+        request.resource.data.role == 'provider' &&
+        request.resource.data.fullName is string &&
+        request.resource.data.fullName.size() >= 2 &&
+        request.resource.data.fullName.size() <= 100 &&
+        request.resource.data.mobileNumber is string &&
+        request.resource.data.mobileNumber.size() >= 8 &&
+        request.resource.data.mobileNumber.size() <= 16 &&
+        request.resource.data.vehicleNumber is string &&
+        request.resource.data.vehicleNumber.size() >= 4 &&
+        request.resource.data.vehicleNumber.size() <= 20 &&
+        request.resource.data.vehicleType is string &&
+        request.resource.data.vehicleType in ['Car', 'Bike'] &&
+        request.resource.data.createdAt == request.time;
+    }
+
+    match /bookingRequests/{documentId} {
+      allow read, update, delete: if false;
+      allow create: if
+        request.resource.data.keys().hasOnly([
+          'customerName',
+          'phoneNumber',
+          'service',
+          'location',
+          'status',
+          'createdAt'
+        ]) &&
+        request.resource.data.customerName is string &&
+        request.resource.data.customerName.size() >= 2 &&
+        request.resource.data.customerName.size() <= 100 &&
+        request.resource.data.phoneNumber is string &&
+        request.resource.data.phoneNumber.size() >= 8 &&
+        request.resource.data.phoneNumber.size() <= 16 &&
+        request.resource.data.service is string &&
+        request.resource.data.service.size() > 0 &&
+        request.resource.data.location is string &&
+        request.resource.data.location.size() >= 2 &&
+        request.resource.data.location.size() <= 200 &&
+        request.resource.data.status == 'pending' &&
+        request.resource.data.createdAt == request.time;
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
