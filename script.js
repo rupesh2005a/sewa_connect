@@ -352,8 +352,31 @@ $$("[data-pick]").forEach(button => {
         openModal("booking", button.dataset.pick || "");
 
     });
-
 });
+
+$$("[data-transport]").forEach(button => {
+    button.addEventListener("click", event => {
+        event.stopPropagation();
+        window.location.href = "transport.html";
+    });
+});
+
+const transportCard = $(".transport-card");
+
+if (transportCard) {
+    transportCard.addEventListener("click", event => {
+        if (!event.target.closest("[data-transport]")) {
+            window.location.href = "transport.html";
+        }
+    });
+
+    transportCard.addEventListener("keydown", event => {
+        if (event.key === "Enter" || event.key === " ") {
+            event.preventDefault();
+            window.location.href = "transport.html";
+        }
+    });
+}
 
 /* Footer category links */
 $$("[data-footer-category]").forEach(link => {

@@ -77,6 +77,65 @@ service cloud.firestore {
         request.resource.data.createdAt == request.time;
     }
 
+    match /transportBookings/{documentId} {
+      allow read, update, delete: if false;
+      allow create: if
+        request.resource.data.keys().hasOnly([
+          'service',
+          'campus',
+          'origin',
+          'destination',
+          'customerName',
+          'routeDistanceKm',
+          'selectedVehicleType',
+          'perKmRate',
+          'estimatedFare',
+          'originCoordinates',
+          'status',
+          'createdAt'
+        ]) &&
+        request.resource.data.service == 'transport' &&
+        request.resource.data.campus == 'Gautam Buddha University, Greater Noida' &&
+        request.resource.data.origin is string &&
+        request.resource.data.origin.size() >= 2 &&
+        request.resource.data.origin.size() <= 300 &&
+        request.resource.data.destination is string &&
+        request.resource.data.destination.size() >= 2 &&
+        request.resource.data.destination.size() <= 300 &&
+        request.resource.data.customerName is string &&
+        request.resource.data.customerName.size() >= 2 &&
+        request.resource.data.customerName.size() <= 100 &&
+        request.resource.data.routeDistanceKm is number &&
+        request.resource.data.routeDistanceKm > 0 &&
+        request.resource.data.selectedVehicleType is string &&
+        request.resource.data.selectedVehicleType in ['Bike', 'Car'] &&
+        request.resource.data.perKmRate is number &&
+        (
+          (
+            request.resource.data.selectedVehicleType == 'Bike' &&
+            request.resource.data.perKmRate == 5
+          ) ||
+          (
+            request.resource.data.selectedVehicleType == 'Car' &&
+            request.resource.data.perKmRate == 10
+          )
+        ) &&
+        request.resource.data.estimatedFare is number &&
+        request.resource.data.estimatedFare ==
+          request.resource.data.routeDistanceKm * request.resource.data.perKmRate &&
+        (
+          request.resource.data.originCoordinates == null ||
+          (
+            request.resource.data.originCoordinates is map &&
+            request.resource.data.originCoordinates.keys().hasOnly(['latitude', 'longitude']) &&
+            request.resource.data.originCoordinates.latitude is number &&
+            request.resource.data.originCoordinates.longitude is number
+          )
+        ) &&
+        request.resource.data.status == 'pending' &&
+        request.resource.data.createdAt == request.time;
+    }
+
     match /{document=**} {
       allow read, write: if false;
     }
