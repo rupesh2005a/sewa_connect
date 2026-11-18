@@ -3,8 +3,10 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     match /customers/{documentId} {
-      allow read, update, delete: if false;
-      allow create: if
+      allow get: if request.auth != null && request.auth.uid == documentId;
+      allow list, update, delete: if false;
+      allow create: if request.auth != null &&
+        request.auth.uid == documentId &&
         request.resource.data.keys().hasOnly([
           'role',
           'fullName',
@@ -22,16 +24,20 @@ service cloud.firestore {
         request.resource.data.emailAddress is string &&
         request.resource.data.emailAddress.size() >= 3 &&
         request.resource.data.emailAddress.size() <= 254 &&
+        request.resource.data.emailAddress == request.auth.token.email &&
         request.resource.data.createdAt == request.time;
     }
 
     match /providers/{documentId} {
-      allow read, update, delete: if false;
-      allow create: if
+      allow get: if request.auth != null && request.auth.uid == documentId;
+      allow list, update, delete: if false;
+      allow create: if request.auth != null &&
+        request.auth.uid == documentId &&
         request.resource.data.keys().hasOnly([
           'role',
           'fullName',
           'mobileNumber',
+          'emailAddress',
           'vehicleNumber',
           'vehicleType',
           'createdAt'
@@ -43,6 +49,10 @@ service cloud.firestore {
         request.resource.data.mobileNumber is string &&
         request.resource.data.mobileNumber.size() >= 8 &&
         request.resource.data.mobileNumber.size() <= 16 &&
+        request.resource.data.emailAddress is string &&
+        request.resource.data.emailAddress.size() >= 3 &&
+        request.resource.data.emailAddress.size() <= 254 &&
+        request.resource.data.emailAddress == request.auth.token.email &&
         request.resource.data.vehicleNumber is string &&
         request.resource.data.vehicleNumber.size() >= 4 &&
         request.resource.data.vehicleNumber.size() <= 20 &&
@@ -85,12 +95,15 @@ service cloud.firestore {
           'campus',
           'origin',
           'destination',
+          'originLabel',
+          'destinationLabel',
           'customerName',
           'routeDistanceKm',
           'selectedVehicleType',
           'perKmRate',
           'estimatedFare',
           'originCoordinates',
+          'destinationCoordinates',
           'status',
           'createdAt'
         ]) &&
@@ -102,6 +115,12 @@ service cloud.firestore {
         request.resource.data.destination is string &&
         request.resource.data.destination.size() >= 2 &&
         request.resource.data.destination.size() <= 300 &&
+        request.resource.data.originLabel is string &&
+        request.resource.data.originLabel.size() >= 2 &&
+        request.resource.data.originLabel.size() <= 300 &&
+        request.resource.data.destinationLabel is string &&
+        request.resource.data.destinationLabel.size() >= 2 &&
+        request.resource.data.destinationLabel.size() <= 300 &&
         request.resource.data.customerName is string &&
         request.resource.data.customerName.size() >= 2 &&
         request.resource.data.customerName.size() <= 100 &&
@@ -123,15 +142,14 @@ service cloud.firestore {
         request.resource.data.estimatedFare is number &&
         request.resource.data.estimatedFare ==
           request.resource.data.routeDistanceKm * request.resource.data.perKmRate &&
-        (
-          request.resource.data.originCoordinates == null ||
-          (
-            request.resource.data.originCoordinates is map &&
-            request.resource.data.originCoordinates.keys().hasOnly(['latitude', 'longitude']) &&
-            request.resource.data.originCoordinates.latitude is number &&
-            request.resource.data.originCoordinates.longitude is number
-          )
-        ) &&
+        request.resource.data.originCoordinates is map &&
+        request.resource.data.originCoordinates.keys().hasOnly(['latitude', 'longitude']) &&
+        request.resource.data.originCoordinates.latitude is number &&
+        request.resource.data.originCoordinates.longitude is number &&
+        request.resource.data.destinationCoordinates is map &&
+        request.resource.data.destinationCoordinates.keys().hasOnly(['latitude', 'longitude']) &&
+        request.resource.data.destinationCoordinates.latitude is number &&
+        request.resource.data.destinationCoordinates.longitude is number &&
         request.resource.data.status == 'pending' &&
         request.resource.data.createdAt == request.time;
     }

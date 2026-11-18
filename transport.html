@@ -46,19 +46,26 @@
         <form id="transportForm" novalidate>
           <div class="transport-field-grid">
             <label>
-              Current location
-              <input id="origin" name="origin" required maxlength="300" autocomplete="street-address" placeholder="Enter your starting location" />
+              Pickup location
+              <input id="origin" name="origin" required maxlength="300" autocomplete="street-address" list="campusLocations" placeholder="Search or select a campus pickup point" />
             </label>
             <button class="btn btn-ghost location-button" type="button" id="useLocation">
               <span aria-hidden="true">◎</span> Use my current location
             </button>
           </div>
           <p class="location-status" id="locationStatus" role="status" aria-live="polite"></p>
+          <div class="selected-point" id="originPoint" hidden>
+            <strong>Selected pickup</strong><span class="selected-address"></span><small class="selected-coordinates"></small>
+          </div>
 
           <label>
             Destination
-            <input id="destination" name="destination" required maxlength="300" placeholder="Enter your destination" />
+            <input id="destination" name="destination" required maxlength="300" list="campusLocations" placeholder="Search or select a campus destination" />
           </label>
+          <div class="selected-point" id="destinationPoint" hidden>
+            <strong>Selected destination</strong><span class="selected-address"></span><small class="selected-coordinates"></small>
+          </div>
+          <datalist id="campusLocations"></datalist>
 
           <label>
             Full name
@@ -93,10 +100,16 @@
           </div>
           <div id="routeMap" class="route-map" aria-label="Map showing origin and destination route"></div>
           <div class="route-details">
-            <div><small>From</small><strong id="routeOrigin">—</strong></div>
-            <div><small>To</small><strong id="routeDestination">—</strong></div>
+            <div><small>Pickup</small><strong id="routeOrigin">—</strong><small id="originCoordinates">Coordinates unavailable</small></div>
+            <div><small>Destination</small><strong id="routeDestination">—</strong><small id="destinationCoordinates">Coordinates unavailable</small></div>
             <div><small>Route distance</small><strong id="routeDistance">Calculating...</strong></div>
           </div>
+          <div class="campus-point-controls">
+            <button class="btn btn-ghost" type="button" id="selectPickupOnMap">Move pickup marker</button>
+            <button class="btn btn-ghost" type="button" id="selectDestinationOnMap">Move destination marker</button>
+          </div>
+          <p class="outside-campus-warning" id="outsideCampusWarning" hidden>A selected point appears outside the approximate campus boundary. Change or confirm it before booking.</p>
+          <button class="btn btn-ghost" type="button" id="confirmOutsideCampus" hidden>Confirm point outside campus</button>
           <p class="availability-label">Nearby vehicle availability</p>
           <div class="availability-grid">
             <div><span>🏍️ Bike</span><strong id="bikeAvailability">Unavailable</strong></div>

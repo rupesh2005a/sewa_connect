@@ -22,7 +22,7 @@
       <nav class="nav" id="mainNav">
         <a href="#services">Explore services</a><a href="#how-it-works">How it works</a><a href="#providers">For providers</a><a href="#about">About us</a>
       </nav>
-      <div class="nav-actions"><button class="btn btn-ghost" data-open="login">Log in</button><button class="btn btn-primary" data-open="provider">Join as provider <span>↗</span></button></div>
+      <div class="nav-actions" id="navActions" aria-live="polite"><a class="btn btn-ghost" href="auth.html">Log in</a><button class="btn btn-primary" data-open="provider"><span class="provider-join-full">Join as provider</span><span class="provider-join-short">Provider</span> <span>↗</span></button></div>
     </div>
   </header>
 
@@ -153,6 +153,7 @@
   </div>
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
   <script src="https://www.gstatic.com/firebasejs/11.10.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/11.10.0/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/11.10.0/firebase-firestore-compat.js"></script>
   <script src="firebase.js"></script>
   <script src="script.js"></script>
