@@ -41,7 +41,7 @@ function setMode(mode) {
   title.textContent = isLogin ? "Welcome back" : "Create your provider account";
   intro.textContent = isLogin
     ? "Log in with the email and password for your provider account."
-    : "Add your contact and vehicle details to join Seva Connect.";
+    : "Add your contact details to join Seva Connect.";
   showMessage();
 }
 
@@ -126,7 +126,7 @@ loginForm.addEventListener("submit", async event => {
       return;
     }
 
-    window.location.replace("sewa.html");
+    window.location.replace("provider-services.html");
   } finally {
     actionPending = false;
     setLoading(loginForm, false, "Log in →");
@@ -157,7 +157,7 @@ signupForm.addEventListener("submit", async event => {
       emailAddress: email,
       createdAt: window.firebase.firestore.FieldValue.serverTimestamp()
     });
-    window.location.replace("sewa.html");
+    window.location.replace("provider-services.html");
   } catch (error) {
     if (user) {
       try {
@@ -194,7 +194,7 @@ if (!window.firebase?.auth || !window.sevaFirestore) {
     try {
       const profile = await getProviderProfile(user.uid);
       if (profile) {
-        window.location.replace("sewa.html");
+        window.location.replace("provider-services.html");
         return;
       }
       await signOutAfterProviderCheck();

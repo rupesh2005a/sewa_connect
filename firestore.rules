@@ -30,7 +30,7 @@ service cloud.firestore {
 
     match /providers/{documentId} {
       allow get: if request.auth != null && request.auth.uid == documentId;
-      allow list, update, delete: if false;
+      allow list, delete: if false;
       allow create: if request.auth != null &&
         request.auth.uid == documentId &&
         request.resource.data.keys().hasOnly([
@@ -52,6 +52,22 @@ service cloud.firestore {
         request.resource.data.emailAddress.size() <= 254 &&
         request.resource.data.emailAddress == request.auth.token.email &&
         request.resource.data.createdAt == request.time;
+      allow update: if request.auth != null &&
+        request.auth.uid == documentId &&
+        resource.data.role == 'provider' &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['services']) &&
+        request.resource.data.services is list &&
+        request.resource.data.services.size() >= 1 &&
+        request.resource.data.services.size() <= 6 &&
+        request.resource.data.services.toSet().size() == request.resource.data.services.size() &&
+        request.resource.data.services.toSet().difference([
+          'Transport',
+          'Agriculture & equipment',
+          'Repair & maintenance',
+          'Home service',
+          'Construction',
+          'Other local services'
+        ].toSet()).size() == 0;
     }
 
     match /bookingRequests/{documentId} {
