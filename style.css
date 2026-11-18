@@ -3044,3 +3044,81 @@ h1 em, h2 em {
     width: 100%;
   }
 }
+
+.transport-provider-card {
+  max-width: 760px;
+}
+
+.transport-provider-form {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+  margin-top: 24px;
+}
+
+.transport-provider-form > label {
+  display: grid;
+  align-content: start;
+  gap: 7px;
+  color: #47564b;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.transport-provider-form input,
+.transport-provider-form select {
+  width: 100%;
+  min-width: 0;
+  height: 46px;
+  border: 1px solid #dce4da;
+  border-radius: 10px;
+  padding: 0 12px;
+  background: #fff;
+  color: var(--ink);
+  font: inherit;
+  font-size: 13px;
+}
+
+.transport-provider-form input:focus,
+.transport-provider-form select:focus {
+  outline: none;
+  border-color: var(--green);
+  box-shadow: 0 0 0 3px #176b4815;
+}
+
+.transport-provider-form input[readonly] {
+  background: #f3f6f1;
+  color: #526157;
+  cursor: not-allowed;
+}
+
+.transport-provider-form label small {
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 500;
+  line-height: 1.5;
+}
+
+.transport-provider-form label .provider-field-error {
+  color: #9f2d2d;
+  font-weight: 600;
+}
+
+.transport-provider-area,
+#transportProviderHelp,
+#transportProviderSubmit {
+  grid-column: 1 / -1;
+}
+
+@media (max-width: 650px) {
+  .transport-provider-form {
+    grid-template-columns: 1fr;
+    gap: 13px;
+  }
+
+  .transport-provider-area,
+  #transportProviderHelp,
+  #transportProviderSubmit {
+    grid-column: auto;
+  }
+}

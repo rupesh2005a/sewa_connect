@@ -68,6 +68,46 @@ service cloud.firestore {
           'Construction',
           'Other local services'
         ].toSet()).size() == 0;
+      allow update: if request.auth != null &&
+        request.auth.uid == documentId &&
+        resource.data.role == 'provider' &&
+        resource.data.services is list &&
+        resource.data.services.hasAny(['Transport']) &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['transportDetails']) &&
+        request.resource.data.transportDetails is map &&
+        request.resource.data.transportDetails.keys().hasOnly([
+          'service',
+          'serviceArea',
+          'vehicleType',
+          'vehicleRegistrationNumber',
+          'dateOfBirth',
+          'drivingLicenceNumber'
+        ]) &&
+        request.resource.data.transportDetails.service == 'Transport' &&
+        request.resource.data.transportDetails.serviceArea == 'Gautam Buddha University, Greater Noida' &&
+        request.resource.data.transportDetails.vehicleType in ['Car', 'Bike'] &&
+        request.resource.data.transportDetails.vehicleRegistrationNumber is string &&
+        (
+          request.resource.data.transportDetails.vehicleRegistrationNumber.matches('^[A-Z]{2}[0-9]{1,2}[A-Z]{0,3}[0-9]{1,4}$') ||
+          request.resource.data.transportDetails.vehicleRegistrationNumber.matches('^[0-9]{2}BH[0-9]{4}[A-Z]{1,2}$')
+        ) &&
+        request.resource.data.transportDetails.dateOfBirth is timestamp &&
+        request.resource.data.transportDetails.dateOfBirth.year() >= 1900 &&
+        (
+          request.resource.data.transportDetails.dateOfBirth.year() < request.time.year() - 18 ||
+          (
+            request.resource.data.transportDetails.dateOfBirth.year() == request.time.year() - 18 &&
+            (
+              request.resource.data.transportDetails.dateOfBirth.month() < request.time.month() ||
+              (
+                request.resource.data.transportDetails.dateOfBirth.month() == request.time.month() &&
+                request.resource.data.transportDetails.dateOfBirth.day() <= request.time.day()
+              )
+            )
+          )
+        ) &&
+        request.resource.data.transportDetails.drivingLicenceNumber is string &&
+        request.resource.data.transportDetails.drivingLicenceNumber.matches('^[A-Z]{2}[0-9]{2}[A-Z0-9]{6,16}$');
     }
 
     match /bookingRequests/{documentId} {
