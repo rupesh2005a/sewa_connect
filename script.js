@@ -17,20 +17,8 @@ const successMessage = $("#successMessage");
 const toast = $("#toast");
 
 let toastTimer;
-let currentModalType = "booking";
 
-function registrationForm(type) {
-    if (type === "provider") {
-        return `
-            <label>Full name<input name="name" required autocomplete="name" placeholder="Enter your full name" /></label>
-            <label>Mobile number<input name="phone" required inputmode="tel" pattern="[0-9+ ()-]{8,16}" autocomplete="tel" placeholder="Enter mobile number" /></label>
-            <label>Email address<input name="email" type="email" required maxlength="254" autocomplete="email" placeholder="you@example.com" /></label>
-            <label>Password <small>At least 8 characters</small><input name="password" type="password" required minlength="8" autocomplete="new-password" placeholder="Create a password" /></label>
-            <label>Vehicle number<input name="vehicleNumber" required pattern="[A-Za-z0-9 -]{4,20}" placeholder="Enter vehicle number" /></label>
-            <label>Vehicle type<select name="vehicleType" required><option value="">Choose vehicle type</option><option>Car</option><option>Bike</option></select></label>
-        `;
-    }
-
+function registrationForm() {
     return `
         <label>Your name<input name="name" required autocomplete="name" placeholder="Enter your name" /></label>
         <label>Phone number<input name="phone" required inputmode="tel" pattern="[0-9+ ()-]{8,16}" autocomplete="tel" placeholder="Enter phone number" /></label>
@@ -78,31 +66,18 @@ function showToast(message) {
 function openModal(type = "booking", category = "") {
 
     if (!modalBackdrop || !requestForm || !successMessage) return;
-    if (type === "provider" && window.firebase?.auth?.()?.currentUser) {
-        showToast("Sign out before creating a separate provider account.");
-        return;
-    }
-
-    currentModalType = type;
 
     requestForm.reset();
     requestForm.hidden = false;
     successMessage.hidden = true;
     setFormError();
     setSubmitLoading(false);
-    requestForm.innerHTML = `${registrationForm(type)}
+    requestForm.innerHTML = `${registrationForm()}
         <button class="btn btn-primary modal-submit" type="submit" id="modalSubmit">Continue <span>→</span></button>
-        <small class="form-note">${type === "booking" ? "Your booking request will be saved securely." : "Registration details will be saved to Seva Connect."}</small>
+        <small class="form-note">Your booking request will be saved securely.</small>
         <p class="form-error" id="formError" role="alert" hidden></p>`;
 
     const modalContent = {
-
-        provider: {
-            symbol: "↗",
-            eyebrow: "GROW WITH YOUR COMMUNITY",
-            title: "Join as a service provider",
-            description: "Create a provider account and add your service details."
-        },
 
         booking: {
             symbol: "⌖",
@@ -166,17 +141,6 @@ function closeModal() {
     modalBackdrop.hidden = true;
     document.body.style.overflow = "";
 }
-
-/* Open modal buttons */
-$$("[data-open]").forEach(button => {
-
-    button.addEventListener("click", () => {
-
-        openModal(button.dataset.open || "booking");
-
-    });
-
-});
 
 /* Modal close buttons */
 $("#modalClose")?.addEventListener("click", closeModal);
@@ -400,83 +364,34 @@ requestForm?.addEventListener("submit", async event => {
             throw new Error("Firebase is unavailable. Check the Firebase scripts and internet connection.");
         }
 
-        let savedHeading = "Registration saved!";
-        let savedText = `Thanks, ${name}. Your details were saved to Seva Connect.`;
-        let documentData;
-        let collectionName;
+        const service = String(formData.get("service") || "").trim();
+        const location = String(formData.get("location") || "").trim();
+        if (!name || !phone || !service || !location) throw new Error("Please complete all fields.");
         const serverTimestamp = window.firebase.firestore.FieldValue.serverTimestamp();
-
-        if (currentModalType === "provider") {
-            const vehicleNumber = String(formData.get("vehicleNumber") || "").trim().toUpperCase();
-            const vehicleType = String(formData.get("vehicleType") || "").trim();
-            const email = String(formData.get("email") || "").trim();
-            const password = String(formData.get("password") || "");
-            if (!name || !phone || !email || password.length < 8 || !vehicleNumber || !["Car", "Bike"].includes(vehicleType)) {
-                throw new Error("Please complete all required fields.");
-            }
-            let providerUser;
-            try {
-                const credential = await window.firebase.auth().createUserWithEmailAndPassword(email, password);
-                providerUser = credential.user;
-                collectionName = "providers";
-                documentData = {
-                    role: "provider",
-                    fullName: name,
-                    mobileNumber: phone,
-                    emailAddress: email,
-                    vehicleNumber,
-                    vehicleType,
-                    createdAt: serverTimestamp
-                };
-                await window.sevaFirestore.collection(collectionName).doc(providerUser.uid).set(documentData);
-            } catch (providerError) {
-                if (providerUser) {
-                    try {
-                        await providerUser.delete();
-                    } catch (rollbackError) {
-                        console.error("Could not roll back an incomplete provider signup:", rollbackError);
-                        throw new Error("Your login account was created, but the provider profile could not be saved. Contact support before trying again.");
-                    }
-                }
-                throw providerError;
-            }
-            savedHeading = "Provider account created!";
-            savedText = `Thanks, ${name}. Your provider profile is saved. You can log in with ${email}.`;
-        } else {
-            const service = String(formData.get("service") || "").trim();
-            const location = String(formData.get("location") || "").trim();
-            if (!name || !phone || !service || !location) throw new Error("Please complete all fields.");
-            collectionName = "bookingRequests";
-            documentData = { customerName: name, phoneNumber: phone, service, location, status: "pending", createdAt: serverTimestamp };
-            savedHeading = "Booking request sent!";
-            savedText = `Thanks, ${name}. Your ${service} request for ${location} was saved.`;
-        }
-
-        if (currentModalType !== "provider") {
-            await window.sevaFirestore.collection(collectionName).add(documentData);
-        }
+        await window.sevaFirestore.collection("bookingRequests").add({
+            customerName: name,
+            phoneNumber: phone,
+            service,
+            location,
+            status: "pending",
+            createdAt: serverTimestamp
+        });
 
         requestForm.hidden = true;
         successMessage.hidden = false;
 
         const successHeading = $("h3", successMessage);
         const successText = $("p", successMessage);
-        if (successHeading) successHeading.textContent = savedHeading;
-        if (successText) successText.textContent = savedText;
+        if (successHeading) successHeading.textContent = "Booking request sent!";
+        if (successText) successText.textContent = `Thanks, ${name}. Your ${service} request for ${location} was saved.`;
     } catch (error) {
         console.error("Firebase write failed:", error);
         setSubmitLoading(false);
-        const providerAuthErrors = {
-            "auth/email-already-in-use": "An account already uses this email. Log in instead.",
-            "auth/invalid-email": "Enter a valid email address.",
-            "auth/weak-password": "Choose a stronger password with at least 8 characters.",
-            "auth/operation-not-allowed": "Email/password sign-in is not enabled in Firebase Authentication."
-        };
-        setFormError(providerAuthErrors[error?.code] || (error?.code === "permission-denied"
+        setFormError(error?.code === "permission-denied"
             ? "Firebase rejected the submission. Please check the Firestore rules."
             : error?.message && !error?.code
                 ? error.message
-                : "We could not save your details. Please check your connection and try again."));
+                : "We could not save your details. Please check your connection and try again.");
     }
 });
 
@@ -485,8 +400,7 @@ const navActions = $("#navActions");
 function renderNavigationUser(user) {
     if (!navActions) return;
     if (!user) {
-        navActions.innerHTML = '<a class="btn btn-ghost" href="auth.html">Log in</a><button class="btn btn-primary" data-open="provider"><span class="provider-join-full">Join as provider</span><span class="provider-join-short">Provider</span> <span>↗</span></button>';
-        navActions.querySelector('[data-open="provider"]')?.addEventListener("click", () => openModal("provider"));
+        navActions.innerHTML = '<a class="btn btn-ghost" href="auth.html">Log in</a><a class="btn btn-primary" href="provider-auth.html">Join as provider <span>↗</span></a>';
         return;
     }
 

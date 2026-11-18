@@ -181,10 +181,6 @@ h1 em, h2 em {
   color: var(--green-dark);
 }
 
-.provider-join-short {
-  display: none;
-}
-
 .menu-toggle {
   display: none;
   background: none;
@@ -1598,14 +1594,6 @@ h1 em, h2 em {
     font-size: 9px;
   }
 
-  .provider-join-full {
-    display: none;
-  }
-
-  .provider-join-short {
-    display: inline;
-  }
-
   .nav {
     display: none;
     position: absolute;
@@ -2504,7 +2492,8 @@ h1 em, h2 em {
   font-weight: 500;
 }
 
-.auth-form input {
+.auth-form input,
+.auth-form select {
   width: 100%;
   height: 46px;
   border: 1px solid #dce4da;
@@ -2514,7 +2503,8 @@ h1 em, h2 em {
   font-size: 13px;
 }
 
-.auth-form input:focus {
+.auth-form input:focus,
+.auth-form select:focus {
   outline: none;
   border-color: var(--green);
   box-shadow: 0 0 0 3px #176b4815;
