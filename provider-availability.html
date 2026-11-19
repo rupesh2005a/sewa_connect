@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Manage your Seva Connect transport availability." />
+  <title>Provider availability — Seva Connect</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/maplibre-gl@5.21.0/dist/maplibre-gl.css" />
+</head>
+<body class="provider-flow-page">
+  <header class="header">
+    <div class="container nav-wrap auth-nav provider-flow-nav">
+      <a class="brand" href="sewa.html" aria-label="Seva Connect home">
+        <span class="brand-mark">S<span>+</span></span>
+        <span class="brand-copy">seva<span>connect</span></span>
+      </a>
+      <div class="provider-flow-account">
+        <span id="providerIdentity"></span>
+        <button class="btn btn-ghost" id="providerSignOut" type="button">Sign out</button>
+      </div>
+    </div>
+  </header>
+
+  <main class="provider-flow-main">
+    <section class="provider-flow-card provider-dashboard-card" aria-labelledby="availabilityTitle">
+      <div class="eyebrow">TRANSPORT PROVIDER</div>
+      <h1 id="availabilityTitle">Provider availability</h1>
+      <p class="provider-flow-intro">Manage whether you are available for transport requests at Gautam Buddha University, Greater Noida.</p>
+      <p id="availabilityLoading" class="provider-flow-status" role="status" aria-live="polite">Checking your provider account…</p>
+      <div id="availabilityContent" hidden>
+        <p id="availabilityState" class="provider-flow-status" role="status" aria-live="polite"></p>
+        <div id="availabilityMessage" class="auth-message" role="status" aria-live="polite" hidden></div>
+        <p id="locationSummary" class="provider-flow-note" hidden></p>
+        <div id="providerLocationMap" class="provider-location-map" aria-label="Map for adjusting the provider location pin"></div>
+        <div class="provider-availability-actions">
+          <button id="goLiveButton" class="btn btn-primary provider-flow-submit" type="button">Get my location</button>
+          <button id="useSelectedPinButton" class="btn btn-primary provider-flow-submit" type="button" disabled>Check this pin</button>
+          <button id="stopSharingButton" class="btn btn-ghost provider-flow-submit" type="button">Stop sharing</button>
+        </div>
+        <aside class="provider-availability-notice" aria-label="Location sharing limitation">
+          <strong>Campus location verification is required</strong>
+          <p>The existing map extent is approximate, not an official campus boundary. You can retry GPS or adjust the pin, but the app will not mark you live until an authoritative campus boundary and trusted server-side validation are configured. Browser location can also be imprecise or spoofed.</p>
+        </aside>
+        <h2 class="provider-inbox-title">Incoming requests</h2>
+        <p id="requestInboxStatus" class="provider-flow-note" role="status" aria-live="polite">Provider request delivery is not connected yet. Current Firestore rules deny provider reads and responses on transport bookings.</p>
+        <p class="provider-flow-note">Location permission is requested only when you choose Get my location. If live sharing is enabled after verification, this page would need to remain open; background updates are not implemented.</p>
+        <a class="btn btn-ghost provider-flow-submit" href="provider-dashboard.html">Back to dashboard</a>
+      </div>
+      <div id="availabilityError" class="auth-message error" role="alert" hidden></div>
+      <button id="availabilityRetry" class="btn btn-ghost provider-flow-submit" type="button" hidden>Try again</button>
+    </section>
+  </main>
+
+  <script src="https://cdn.jsdelivr.net/npm/maplibre-gl@5.21.0/dist/maplibre-gl.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/11.10.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/11.10.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/11.10.0/firebase-firestore-compat.js"></script>
+  <script src="firebase.js"></script>
+  <script src="provider-availability.js"></script>
+</body>
+</html>

@@ -1,4 +1,5 @@
 const form = document.querySelector("#transportForm");
+const isResultsPage = document.body.dataset.page === "transport-results";
 const originInput = document.querySelector("#origin");
 const destinationInput = document.querySelector("#destination");
 const campusLocationsList = document.querySelector("#campusLocations");
@@ -9,6 +10,7 @@ const destinationPointBox = document.querySelector("#destinationPoint");
 const routeSubmitButton = document.querySelector("#transportSubmit");
 const errorMessage = document.querySelector("#transportError");
 const results = document.querySelector("#transportResults");
+const routePageError = document.querySelector("#routePageError");
 const routeLookupStatus = document.querySelector("#routeLookupStatus");
 const routeOrigin = document.querySelector("#routeOrigin");
 const routeDestination = document.querySelector("#routeDestination");
@@ -22,6 +24,11 @@ const carDistance = document.querySelector("#carDistance");
 const selectedVehicle = document.querySelector("#selectedVehicle");
 const selectedFare = document.querySelector("#selectedFare");
 const bookNowButton = document.querySelector("#bookNow");
+const bikeAvailability = document.querySelector("#bikeAvailability");
+const carAvailability = document.querySelector("#carAvailability");
+const availabilityNote = document.querySelector("#availabilityNote");
+const customerAuthStatus = document.querySelector("#customerAuthStatus");
+const customerAuthLink = document.querySelector("#customerAuthLink");
 const bookingError = document.querySelector("#bookingError");
 const bookingStatus = document.querySelector("#bookingStatus");
 const transportSuccess = document.querySelector("#transportSuccess");
@@ -39,6 +46,8 @@ const campusBounds = {
   east: 77.533729,
   west: 77.5155537
 };
+const routeSessionKey = "sevaConnectTransportRoute";
+const routeSessionMaxAgeMs = 30 * 60 * 1000;
 
 let originPoint = null;
 let destinationPoint = null;
@@ -50,26 +59,158 @@ let map = null;
 let originMarker = null;
 let destinationMarker = null;
 let routeLayer = null;
-let accuracyCircle = null;
 let locationAccuracyMeters = null;
 let submittingBooking = false;
+let currentCustomer = null;
+let liveProviderRecords = [];
+let providerMarkers = [];
+let liveProviderUnsubscribe = null;
+let availabilityRefreshTimer = null;
 let routeTimer = null;
+let routeCalculationId = 0;
 let searchTimers = new WeakMap();
 const placeCache = new Map();
 
 function setError(message = "") {
+  if (!errorMessage) return;
   errorMessage.textContent = message;
   errorMessage.hidden = !message;
 }
 
 function setBookingError(message = "") {
+  if (!bookingError) return;
   bookingError.textContent = message;
   bookingError.hidden = !message;
 }
 
 function setLocationStatus(message = "", isError = false) {
+  if (!locationStatus) return;
   locationStatus.textContent = message;
   locationStatus.classList.toggle("error", isError);
+}
+
+function updateBookButtonState() {
+  if (!bookNowButton) return;
+  bookNowButton.disabled = submittingBooking ||
+    !currentCustomer ||
+    !originPoint ||
+    !destinationPoint ||
+    routeDistanceKm === null ||
+    !chosenVehicle;
+}
+
+function getLiveProviderRecords() {
+  return liveProviderRecords.filter(record => {
+    const expiresAt = record.expiresAt?.toDate
+      ? record.expiresAt.toDate().getTime()
+      : Number.NaN;
+    return record.status === "available" &&
+      record.serviceArea === "Gautam Buddha University, Greater Noida" &&
+      expiresAt > Date.now() &&
+      Number.isFinite(record.coordinates?.latitude) &&
+      Number.isFinite(record.coordinates?.longitude) &&
+      ["Bike", "Car"].includes(record.vehicleType);
+  });
+}
+
+function updateLiveProviderDisplay() {
+  if (!isResultsPage) return;
+  const providers = getLiveProviderRecords();
+  const bikes = providers.filter(provider => provider.vehicleType === "Bike").length;
+  const cars = providers.filter(provider => provider.vehicleType === "Car").length;
+  bikeAvailability.textContent = bikes ? `${bikes} live` : "None live";
+  carAvailability.textContent = cars ? `${cars} live` : "None live";
+  availabilityNote.textContent = providers.length
+    ? "Markers show signed-in providers with a current available location. Locations may be delayed by device, network, or browser limits."
+    : "No live providers are currently sharing availability. No vehicle markers or live count are shown.";
+
+  providerMarkers.forEach(marker => marker.remove());
+  providerMarkers = [];
+  if (!map) return;
+  providers.forEach(provider => {
+    const icon = provider.vehicleType === "Bike" ? "🏍️" : "🚗";
+    const element = document.createElement("div");
+    element.className = "live-provider-marker";
+    element.textContent = icon;
+    element.title = `Live ${provider.vehicleType} provider`;
+    const marker = new maplibregl.Marker({ element, anchor: "center" })
+      .setLngLat([provider.coordinates.longitude, provider.coordinates.latitude])
+      .setPopup(new maplibregl.Popup({ offset: 20 }).setText(`Live ${provider.vehicleType} provider`))
+      .addTo(map);
+    providerMarkers.push(marker);
+  });
+}
+
+function clearLiveProviderSubscription() {
+  if (liveProviderUnsubscribe) liveProviderUnsubscribe();
+  liveProviderUnsubscribe = null;
+  if (availabilityRefreshTimer) window.clearInterval(availabilityRefreshTimer);
+  availabilityRefreshTimer = null;
+  liveProviderRecords = [];
+  updateLiveProviderDisplay();
+}
+
+function subscribeToLiveProviders() {
+  clearLiveProviderSubscription();
+  if (!currentCustomer || !window.sevaFirestore || !window.firebase) return;
+
+  const refresh = () => {
+    if (liveProviderUnsubscribe) liveProviderUnsubscribe();
+    const cutoff = window.firebase.firestore.Timestamp.fromMillis(Date.now() + 15000);
+    liveProviderUnsubscribe = window.sevaFirestore.collection("providerAvailability")
+      .where("status", "==", "available")
+      .where("serviceArea", "==", "Gautam Buddha University, Greater Noida")
+      .where("expiresAt", ">", cutoff)
+      .onSnapshot(snapshot => {
+        liveProviderRecords = snapshot.docs.map(document => document.data());
+        updateLiveProviderDisplay();
+      }, error => {
+        console.error("Could not load live provider availability:", error);
+        liveProviderRecords = [];
+        updateLiveProviderDisplay();
+        availabilityNote.textContent = error?.code === "permission-denied"
+          ? "Firebase rules did not allow loading live providers. Publish the current rules."
+          : "Live provider availability could not be loaded. Check your connection and Firestore index.";
+      });
+  };
+
+  refresh();
+  availabilityRefreshTimer = window.setInterval(refresh, 30000);
+}
+
+async function loadCustomerProfile(user) {
+  if (!isResultsPage) return;
+  clearLiveProviderSubscription();
+  currentCustomer = null;
+  updateBookButtonState();
+  if (!user) {
+    customerAuthStatus.textContent = "Sign in with a customer account to see live providers and submit a request.";
+    customerAuthLink.hidden = false;
+    availabilityNote.textContent = "Sign in with a customer account to see live provider availability.";
+    return;
+  }
+
+  try {
+    const snapshot = await window.sevaFirestore.collection("customers").doc(user.uid).get();
+    if (!snapshot.exists || snapshot.data().role !== "customer") {
+      customerAuthStatus.textContent = "This sign-in is not linked to a customer profile. Sign in with a customer account.";
+      customerAuthLink.hidden = false;
+      availabilityNote.textContent = "Customer sign-in is required to see live provider availability.";
+      return;
+    }
+
+    currentCustomer = { uid: user.uid, ...snapshot.data() };
+    customerAuthStatus.textContent = `Signed in as ${currentCustomer.emailAddress || user.email || "customer"}.`;
+    customerAuthLink.hidden = true;
+    updateBookButtonState();
+    subscribeToLiveProviders();
+  } catch (error) {
+    console.error("Could not load the customer profile:", error);
+    customerAuthStatus.textContent = error?.code === "permission-denied"
+      ? "Firebase rules did not allow loading your customer profile. Publish the current rules."
+      : "We could not load your customer profile. Check your connection and try again.";
+    customerAuthLink.hidden = false;
+  }
 }
 
 function formatCoordinates(point) {
@@ -83,6 +224,70 @@ function updatePointBox(box, point) {
   box.querySelector(".selected-coordinates").textContent = formatCoordinates(point);
 }
 
+function isValidPoint(point) {
+  return point &&
+    typeof point.label === "string" &&
+    point.label.trim().length > 0 &&
+    point.label.length <= 300 &&
+    Number.isFinite(point.latitude) &&
+    point.latitude >= -90 &&
+    point.latitude <= 90 &&
+    Number.isFinite(point.longitude) &&
+    point.longitude >= -180 &&
+    point.longitude <= 180 &&
+    (point.accuracyMeters === undefined ||
+      (Number.isFinite(point.accuracyMeters) && point.accuracyMeters > 0));
+}
+
+function readRouteSession() {
+  try {
+    const raw = window.sessionStorage.getItem(routeSessionKey);
+    if (!raw) return null;
+
+    const request = JSON.parse(raw);
+    const age = Date.now() - request.createdAt;
+    if (
+      request.version !== 1 ||
+      !Number.isFinite(request.createdAt) ||
+      age < -60000 ||
+      age > routeSessionMaxAgeMs ||
+      !isValidPoint(request.origin) ||
+      !isValidPoint(request.destination)
+    ) {
+      window.sessionStorage.removeItem(routeSessionKey);
+      return null;
+    }
+
+    return {
+      createdAt: request.createdAt,
+      origin: request.origin,
+      destination: request.destination
+    };
+  } catch (error) {
+    console.warn("Could not read the saved transport locations:", error);
+    return null;
+  }
+}
+
+function writeRouteSession(origin, destination) {
+  const request = {
+    version: 1,
+    createdAt: Date.now(),
+    origin: {
+      latitude: origin.latitude,
+      longitude: origin.longitude,
+      label: origin.label,
+      ...(Number.isFinite(origin.accuracyMeters) ? { accuracyMeters: origin.accuracyMeters } : {})
+    },
+    destination: {
+      latitude: destination.latitude,
+      longitude: destination.longitude,
+      label: destination.label
+    }
+  };
+  window.sessionStorage.setItem(routeSessionKey, JSON.stringify(request));
+}
+
 function isWithinApproximateCampus(point) {
   return point.latitude <= campusBounds.north &&
     point.latitude >= campusBounds.south &&
@@ -93,6 +298,7 @@ function isWithinApproximateCampus(point) {
 function showCampusWarning() {
   const outside = (originPoint && !isWithinApproximateCampus(originPoint)) ||
     (destinationPoint && !isWithinApproximateCampus(destinationPoint));
+  if (!outsideWarning || !confirmOutsideButton) return outside;
   outsideWarning.hidden = !outside;
   confirmOutsideButton.hidden = !outside;
   confirmOutsideButton.textContent = outsideConfirmed
@@ -124,16 +330,6 @@ async function searchCampusPlace(query) {
     });
   });
 
-  if (locationAccuracyMeters) {
-    accuracyCircle = L.circle([originPoint.latitude, originPoint.longitude], {
-      radius: locationAccuracyMeters,
-      color: "#176b48",
-      weight: 1,
-      fillColor: "#176b48",
-      fillOpacity: 0.12
-    }).addTo(map);
-  }
-
   if (!features.length) {
     throw new Error(`No verified campus-area result for "${query}". Tap the map or drag a marker instead.`);
   }
@@ -151,6 +347,7 @@ async function searchCampusPlace(query) {
 }
 
 function searchPlaceSuggestions(input) {
+  if (!input || !campusLocationsList) return;
   input.addEventListener("input", () => {
     clearTimeout(searchTimers.get(input));
     const query = input.value.trim();
@@ -202,7 +399,11 @@ async function calculateRoute(origin, destination) {
   if (data.code !== "Ok" || !data.routes?.length) {
     throw new Error("A drivable route could not be found. Fine-tune the points or try another campus location.");
   }
-  if (!Number.isFinite(data.routes[0].distance) || data.routes[0].distance <= 0) {
+  if (
+    !Number.isFinite(data.routes[0].distance) ||
+    data.routes[0].distance <= 0 ||
+    !data.routes[0].geometry?.coordinates?.length
+  ) {
     throw new Error("Pickup and destination need to be different valid locations.");
   }
 
@@ -213,58 +414,178 @@ async function calculateRoute(origin, destination) {
 }
 
 function initializeMap() {
-  if (!window.L) throw new Error("The map could not be loaded.");
+  if (!window.maplibregl) throw new Error("The map could not be loaded.");
+  if (!isResultsPage || !document.querySelector("#routeMap")) {
+    throw new Error("The route map is unavailable on this page.");
+  }
   if (map) return;
 
-  map = L.map("routeMap").setView([campusCenter.latitude, campusCenter.longitude], 15);
-  const basemap = L.tileLayer("https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png", {
-    attribution: "&copy; OpenStreetMap contributors &copy; CARTO",
-    subdomains: "abcd",
-    maxZoom: 20
-  }).addTo(map);
-
-  basemap.on("tileerror", () => {
-    routeLookupStatus.textContent = "Map tiles could not be loaded. Route and fare may still be available; check your connection.";
+  map = new maplibregl.Map({
+    container: "routeMap",
+    style: "https://tiles.waymorphic.com/styles/positron",
+    center: [campusCenter.longitude, campusCenter.latitude],
+    zoom: 15
   });
-
-  L.rectangle([
-    [campusBounds.south, campusBounds.west],
-    [campusBounds.north, campusBounds.east]
-  ], {
-    color: "#176b48",
-    weight: 1,
-    opacity: 0.55,
-    fillOpacity: 0.03,
-    dashArray: "5 5"
-  }).addTo(map);
+  map.addControl(new maplibregl.NavigationControl(), "top-right");
+  map.on("load", () => {
+    map.addSource("campus-boundary", {
+      type: "geojson",
+      data: campusBoundaryFeature()
+    });
+    map.addLayer({
+      id: "campus-boundary-fill",
+      type: "fill",
+      source: "campus-boundary",
+      paint: { "fill-color": "#176b48", "fill-opacity": 0.03 }
+    });
+    map.addLayer({
+      id: "campus-boundary-line",
+      type: "line",
+      source: "campus-boundary",
+      paint: {
+        "line-color": "#176b48",
+        "line-width": 1,
+        "line-opacity": 0.55,
+        "line-dasharray": [2, 2]
+      }
+    });
+    updateMarkers();
+    drawRouteOnMap();
+    updateLiveProviderDisplay();
+  });
+  map.on("error", event => {
+    if (event.error) console.warn("The transport map reported an error:", event.error);
+  });
 
   map.on("click", event => {
     const point = {
-      latitude: event.latlng.lat,
-      longitude: event.latlng.lng,
+      latitude: event.lngLat.lat,
+      longitude: event.lngLat.lng,
       label: `Map-selected ${activePoint === "pickup" ? "pickup" : "destination"} point`
     };
     setPoint(activePoint, point);
   });
 
-  requestAnimationFrame(() => map.invalidateSize());
+  requestAnimationFrame(() => map.resize());
+  updateLiveProviderDisplay();
+}
+
+function campusBoundaryFeature() {
+  return {
+    type: "Feature",
+    properties: {},
+    geometry: {
+      type: "Polygon",
+      coordinates: [[
+        [campusBounds.west, campusBounds.south],
+        [campusBounds.east, campusBounds.south],
+        [campusBounds.east, campusBounds.north],
+        [campusBounds.west, campusBounds.north],
+        [campusBounds.west, campusBounds.south]
+      ]]
+    }
+  };
+}
+
+function createAccuracyCircleFeature(point, radiusMeters) {
+  const coordinates = [];
+  const latitudeRadians = point.latitude * Math.PI / 180;
+  for (let index = 0; index <= 64; index += 1) {
+    const angle = index * 2 * Math.PI / 64;
+    const latitude = point.latitude + (radiusMeters / 111320) * Math.cos(angle);
+    const longitude = point.longitude +
+      (radiusMeters / (111320 * Math.cos(latitudeRadians))) * Math.sin(angle);
+    coordinates.push([longitude, latitude]);
+  }
+  return {
+    type: "Feature",
+    properties: {},
+    geometry: { type: "Polygon", coordinates: [coordinates] }
+  };
+}
+
+function updateAccuracyCircle() {
+  if (!map || !map.isStyleLoaded()) return;
+  const data = originPoint && locationAccuracyMeters
+    ? createAccuracyCircleFeature(originPoint, locationAccuracyMeters)
+    : { type: "FeatureCollection", features: [] };
+  const source = map.getSource("pickup-accuracy");
+  if (source) {
+    source.setData(data);
+    return;
+  }
+  map.addSource("pickup-accuracy", { type: "geojson", data });
+  map.addLayer({
+    id: "pickup-accuracy-fill",
+    type: "fill",
+    source: "pickup-accuracy",
+    paint: {
+      "fill-color": "#176b48",
+      "fill-opacity": 0.12,
+      "fill-outline-color": "#176b48"
+    }
+  });
+}
+
+function drawRouteOnMap() {
+  if (!map || !map.isStyleLoaded() || !routeLayer) return;
+  const data = { type: "Feature", properties: {}, geometry: routeLayer };
+  const source = map.getSource("calculated-route");
+  if (source) {
+    source.setData(data);
+  } else {
+    map.addSource("calculated-route", { type: "geojson", data });
+    map.addLayer({
+      id: "calculated-route-line",
+      type: "line",
+      source: "calculated-route",
+      layout: { "line-cap": "round", "line-join": "round" },
+      paint: { "line-color": "#176b48", "line-width": 5, "line-opacity": 0.85 }
+    });
+  }
+  const bounds = new maplibregl.LngLatBounds();
+  routeLayer.coordinates.forEach(coordinate => bounds.extend(coordinate));
+  map.fitBounds(bounds, { padding: 32, maxZoom: 16 });
+}
+
+function clearRouteLayer() {
+  routeLayer = null;
+  if (!map || !map.isStyleLoaded()) return;
+  if (map.getLayer("calculated-route-line")) map.removeLayer("calculated-route-line");
+  if (map.getSource("calculated-route")) map.removeSource("calculated-route");
 }
 
 function setPoint(type, point) {
+  if (!isValidPoint(point)) return;
   outsideConfirmed = false;
   if (type === "pickup") {
     originPoint = point;
     locationAccuracyMeters = point.accuracyMeters || null;
-    originInput.value = point.label;
+    if (originInput) originInput.value = point.label;
     updatePointBox(originPointBox, point);
   } else {
     destinationPoint = point;
-    destinationInput.value = point.label;
+    if (destinationInput) destinationInput.value = point.label;
     updatePointBox(destinationPointBox, point);
   }
 
+  if (!isResultsPage) return;
   updateMarkers();
   showCampusWarning();
+  resetRouteResults();
+  routeOrigin.textContent = originPoint?.label || "—";
+  routeDestination.textContent = destinationPoint?.label || "—";
+  originCoordinatesLabel.textContent = originPoint ? formatCoordinates(originPoint) : "Coordinates unavailable";
+  destinationCoordinatesLabel.textContent = destinationPoint ? formatCoordinates(destinationPoint) : "Coordinates unavailable";
+  routeLookupStatus.textContent = "Locations updated. Recalculating route…";
+  if (originPoint && destinationPoint) {
+    try {
+      writeRouteSession(originPoint, destinationPoint);
+    } catch (error) {
+      console.error("Could not preserve the edited transport locations:", error);
+      routeLookupStatus.textContent = "Could not save edited locations for refresh. The current route can still be recalculated.";
+    }
+  }
   scheduleRouteRecalculation();
 }
 
@@ -272,14 +593,17 @@ function updateMarkers() {
   if (!map) return;
   if (originMarker) originMarker.remove();
   if (destinationMarker) destinationMarker.remove();
-  if (accuracyCircle) accuracyCircle.remove();
 
   if (originPoint) {
-    originMarker = L.marker([originPoint.latitude, originPoint.longitude], { draggable: true })
-      .addTo(map)
-      .bindPopup("Pickup — drag to adjust");
-    originMarker.on("dragend", event => {
-      const position = event.target.getLatLng();
+    const element = document.createElement("div");
+    element.className = "transport-map-marker pickup-map-marker";
+    element.setAttribute("aria-label", "Pickup location");
+    originMarker = new maplibregl.Marker({ element, draggable: true })
+      .setLngLat([originPoint.longitude, originPoint.latitude])
+      .setPopup(new maplibregl.Popup({ offset: 20 }).setText("Pickup — drag to adjust"))
+      .addTo(map);
+    originMarker.on("dragend", () => {
+      const position = originMarker.getLngLat();
       setPoint("pickup", {
         latitude: position.lat,
         longitude: position.lng,
@@ -288,20 +612,19 @@ function updateMarkers() {
     });
   }
 
-  if (destinationPoint) {
-    destinationMarker = L.marker([destinationPoint.latitude, destinationPoint.longitude], {
-      draggable: true,
-      icon: L.icon({
-        iconUrl: "https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png",
-        shadowUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png",
-        iconSize: [25, 41],
-        iconAnchor: [12, 41],
-        popupAnchor: [1, -34]
-      })
-    }).addTo(map).bindPopup("Destination — drag to adjust");
+  updateAccuracyCircle();
 
-    destinationMarker.on("dragend", event => {
-      const position = event.target.getLatLng();
+  if (destinationPoint) {
+    const element = document.createElement("div");
+    element.className = "transport-map-marker destination-map-marker";
+    element.setAttribute("aria-label", "Destination");
+    destinationMarker = new maplibregl.Marker({ element, draggable: true })
+      .setLngLat([destinationPoint.longitude, destinationPoint.latitude])
+      .setPopup(new maplibregl.Popup({ offset: 20 }).setText("Destination — drag to adjust"))
+      .addTo(map);
+
+    destinationMarker.on("dragend", () => {
+      const position = destinationMarker.getLngLat();
       setPoint("destination", {
         latitude: position.lat,
         longitude: position.lng,
@@ -312,6 +635,7 @@ function updateMarkers() {
 }
 
 function resetRouteResults() {
+  if (!isResultsPage) return;
   routeDistanceKm = null;
   chosenVehicle = null;
   bookNowButton.disabled = true;
@@ -329,12 +653,11 @@ function resetRouteResults() {
   setBookingError("");
   bookingStatus.textContent = "";
   transportSuccess.hidden = true;
-  if (routeLayer) routeLayer.remove();
-  routeLayer = null;
+  clearRouteLayer();
 }
 
 function updateFares() {
-  if (routeDistanceKm === null) return;
+  if (routeDistanceKm === null || !isResultsPage) return;
 
   const bikeTotal = routeDistanceKm * 5;
   const carTotal = routeDistanceKm * 10;
@@ -350,13 +673,24 @@ function updateFares() {
 async function recalculateRoute() {
   if (!originPoint || !destinationPoint) return;
 
+  const calculationId = ++routeCalculationId;
+  const origin = { ...originPoint };
+  const destination = { ...destinationPoint };
   resetRouteResults();
   results.hidden = false;
   routeLookupStatus.textContent = "Calculating route...";
-  routeOrigin.textContent = originPoint.label;
-  routeDestination.textContent = destinationPoint.label;
-  originCoordinatesLabel.textContent = formatCoordinates(originPoint);
-  destinationCoordinatesLabel.textContent = formatCoordinates(destinationPoint);
+  routeOrigin.textContent = origin.label;
+  routeDestination.textContent = destination.label;
+  originCoordinatesLabel.textContent = formatCoordinates(origin);
+  destinationCoordinatesLabel.textContent = formatCoordinates(destination);
+
+  try {
+    initializeMap();
+    updateMarkers();
+  } catch (error) {
+    console.warn("The transport map could not be initialized:", error);
+    routeLookupStatus.textContent = "Map unavailable. Trying to calculate the route and fare…";
+  }
 
   const outside = showCampusWarning();
   if (outside && !outsideConfirmed) {
@@ -366,21 +700,25 @@ async function recalculateRoute() {
   }
 
   try {
-    const route = await calculateRoute(originPoint, destinationPoint);
+    const route = await calculateRoute(origin, destination);
+    if (calculationId !== routeCalculationId) return;
     routeDistanceKm = route.distanceMeters / 1000;
     routeDistance.textContent = `${routeDistanceKm.toFixed(2)} km`;
     routeLookupStatus.textContent = "Route calculated successfully.";
     updateFares();
 
-    initializeMap();
-    updateMarkers();
-    if (routeLayer) routeLayer.remove();
-    routeLayer = L.geoJSON(route.geometry, {
-      style: { color: "#176b48", weight: 5, opacity: 0.85 }
-    }).addTo(map);
-    map.fitBounds(routeLayer.getBounds(), { padding: [32, 32] });
-    setTimeout(() => map.invalidateSize(), 100);
+    if (map) {
+      try {
+        routeLayer = route.geometry;
+        drawRouteOnMap();
+        setTimeout(() => map.resize(), 100);
+      } catch (error) {
+        console.error("Could not draw the calculated route on the map:", error);
+        routeLookupStatus.textContent = "Route and fare calculated, but the route could not be drawn on the map.";
+      }
+    }
   } catch (error) {
+    if (calculationId !== routeCalculationId) return;
     console.error("Route lookup failed:", error);
     routeLookupStatus.textContent = error.message || "Route lookup failed.";
     routeDistance.textContent = "Unavailable";
@@ -389,6 +727,7 @@ async function recalculateRoute() {
 
 function scheduleRouteRecalculation() {
   clearTimeout(routeTimer);
+  routeCalculationId += 1;
   routeTimer = setTimeout(recalculateRoute, 350);
 }
 
@@ -408,7 +747,8 @@ useLocationButton?.addEventListener("click", () => {
       const point = {
         latitude: position.coords.latitude,
         longitude: position.coords.longitude,
-        label: "My GPS-reported pickup location"
+        label: "My GPS-reported pickup location",
+        ...(Number.isFinite(accuracy) ? { accuracyMeters: accuracy } : {})
       };
       setPoint("pickup", point);
       const accuracyText = Number.isFinite(accuracy)
@@ -417,10 +757,6 @@ useLocationButton?.addEventListener("click", () => {
       setLocationStatus(`Pickup updated with high-accuracy geolocation.${accuracyText}`);
       useLocationButton.disabled = false;
       useLocationButton.innerHTML = '<span aria-hidden="true">◎</span> Use my current location';
-      results.hidden = false;
-      initializeMap();
-      updateMarkers();
-      map.setView([point.latitude, point.longitude], 16);
     },
     error => {
       let message = "We could not access your location. Use campus search or tap the map.";
@@ -440,6 +776,7 @@ searchPlaceSuggestions(destinationInput);
 
 originInput?.addEventListener("input", () => {
   originPoint = null;
+  locationAccuracyMeters = null;
   outsideConfirmed = false;
   resetRouteResults();
   originPointBox.hidden = true;
@@ -481,7 +818,7 @@ document.querySelectorAll(".vehicle-option").forEach(option => {
     });
     updateFares();
     selectedVehicle.textContent = chosenVehicle;
-    bookNowButton.disabled = false;
+    updateBookButtonState();
   });
 });
 
@@ -503,29 +840,35 @@ form?.addEventListener("submit", async event => {
 
   routeSubmitButton.disabled = true;
   routeSubmitButton.textContent = "Finding locations...";
-  results.hidden = false;
 
   try {
-    initializeMap();
-    if (!originPoint) originPoint = await searchCampusPlace(originText);
-    if (!destinationPoint) destinationPoint = await searchCampusPlace(destinationText);
-    updatePointBox(originPointBox, originPoint);
-    updatePointBox(destinationPointBox, destinationPoint);
-    updateMarkers();
-    await recalculateRoute();
+    const pickup = originPoint || await searchCampusPlace(originText);
+    const destination = destinationPoint || await searchCampusPlace(destinationText);
+    if (!isValidPoint(pickup) || !isValidPoint(destination)) {
+      throw new Error("Choose valid pickup and destination locations.");
+    }
+    writeRouteSession(pickup, destination);
+    routeSubmitButton.textContent = "Opening route results...";
+    window.location.assign("transport-results.html");
   } catch (error) {
     console.error("Location lookup failed:", error);
     setError(error.message || "Could not find that campus location.");
   } finally {
     routeSubmitButton.disabled = false;
-    routeSubmitButton.innerHTML = 'Find route and fares <span aria-hidden="true">→</span>';
+    routeSubmitButton.innerHTML = 'Find route and fare <span aria-hidden="true">→</span>';
   }
-
-  results.scrollIntoView({ behavior: "smooth", block: "start" });
 });
 
 bookNowButton?.addEventListener("click", async () => {
   if (!originPoint || !destinationPoint || routeDistanceKm === null || !chosenVehicle || submittingBooking) return;
+  if (!currentCustomer) {
+    setBookingError("Sign in with a customer account before submitting a transport request.");
+    return;
+  }
+  if (typeof currentCustomer.fullName !== "string" || !currentCustomer.fullName.trim()) {
+    setBookingError("Your customer profile has no saved name. Update your account profile before booking.");
+    return;
+  }
   if (!window.sevaFirestore || !window.firebase) {
     setBookingError("Firebase is unavailable. Please refresh and try again.");
     return;
@@ -541,8 +884,7 @@ bookNowButton?.addEventListener("click", async () => {
     return;
   }
 
-  const formData = new FormData(form);
-  const customerName = String(formData.get("customerName") || "").trim();
+  const customerName = currentCustomer.fullName.trim();
   const perKmRate = chosenVehicle === "Bike" ? 5 : 10;
   const estimatedFare = routeDistanceKm * perKmRate;
 
@@ -557,6 +899,9 @@ bookNowButton?.addEventListener("click", async () => {
     await window.sevaFirestore.collection("transportBookings").add({
       service: "transport",
       campus: "Gautam Buddha University, Greater Noida",
+      customerUid: currentCustomer.uid,
+      customerEmailAddress: currentCustomer.emailAddress,
+      customerMobileNumber: currentCustomer.mobileNumber,
       originLabel: originPoint.label,
       destinationLabel: destinationPoint.label,
       originCoordinates: { latitude: originPoint.latitude, longitude: originPoint.longitude },
@@ -572,9 +917,14 @@ bookNowButton?.addEventListener("click", async () => {
       createdAt: window.firebase.firestore.FieldValue.serverTimestamp()
     });
 
+    try {
+      window.sessionStorage.removeItem(routeSessionKey);
+    } catch (storageError) {
+      console.warn("Could not clear the completed transport route session:", storageError);
+    }
     bookingStatus.textContent = "";
     transportSuccess.hidden = false;
-    transportSuccessText.textContent = `Your ${chosenVehicle} transport booking from ${originPoint.label} to ${destinationPoint.label} was saved successfully.`;
+    transportSuccessText.textContent = `Your ${chosenVehicle} request from ${originPoint.label} to ${destinationPoint.label} was saved in Firebase. It has not been delivered to or accepted by a provider because the provider request inbox is not configured yet.`;
   } catch (error) {
     console.error("Transport booking write failed:", error);
     submittingBooking = false;
@@ -586,3 +936,49 @@ bookNowButton?.addEventListener("click", async () => {
       : "We could not save the booking. Check your connection and try again.");
   }
 });
+
+function restoreFormLocations() {
+  if (!form) return;
+  const request = readRouteSession();
+  if (!request) return;
+  setPoint("pickup", request.origin);
+  setPoint("destination", request.destination);
+}
+
+function loadResultsFromSession() {
+  if (!isResultsPage) return;
+  const request = readRouteSession();
+  if (!request) {
+    routePageError.hidden = false;
+    results.hidden = true;
+    return;
+  }
+
+  routePageError.hidden = true;
+  originPoint = request.origin;
+  destinationPoint = request.destination;
+  locationAccuracyMeters = originPoint.accuracyMeters || null;
+  results.hidden = false;
+  routeOrigin.textContent = originPoint.label;
+  routeDestination.textContent = destinationPoint.label;
+  originCoordinatesLabel.textContent = formatCoordinates(originPoint);
+  destinationCoordinatesLabel.textContent = formatCoordinates(destinationPoint);
+  recalculateRoute();
+}
+
+if (isResultsPage) {
+  if (!window.firebase?.auth || !window.sevaFirestore) {
+    customerAuthStatus.textContent = "Firebase could not initialize. Sign-in, live availability, and booking are unavailable.";
+    availabilityNote.textContent = "Live provider availability could not be loaded.";
+  } else {
+    window.firebase.auth().onAuthStateChanged(user => {
+      loadCustomerProfile(user);
+    }, error => {
+      console.error("Could not verify the customer sign-in:", error);
+      customerAuthStatus.textContent = "We could not verify your sign-in. Refresh the page and try again.";
+    });
+  }
+}
+
+restoreFormLocations();
+loadResultsFromSession();

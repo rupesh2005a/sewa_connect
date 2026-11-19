@@ -2,7 +2,13 @@
   "name": "sewa-connect",
   "version": "1.0.0",
   "type": "module",
+  "scripts": {
+    "dev": "vite"
+  },
   "dependencies": {
-    "firebase": "^11.x.x"
+    "firebase": "^13.4.0"
+  },
+  "devDependencies": {
+    "vite": "^8.3.8"
   }
 }

@@ -108,6 +108,66 @@ service cloud.firestore {
         ) &&
         request.resource.data.transportDetails.drivingLicenceNumber is string &&
         request.resource.data.transportDetails.drivingLicenceNumber.matches('^[A-Z]{2}[0-9]{2}[A-Z0-9]{6,16}$');
+      allow update: if request.auth != null &&
+        request.auth.uid == documentId &&
+        resource.data.role == 'provider' &&
+        resource.data.services is list &&
+        resource.data.services.hasAny(['Transport']) &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['availability']) &&
+        request.resource.data.availability is map &&
+        request.resource.data.availability.keys().hasOnly(['status', 'updatedAt']) &&
+        request.resource.data.availability.keys().hasAll(['status', 'updatedAt']) &&
+        request.resource.data.availability.status == 'unavailable' &&
+        request.resource.data.availability.updatedAt == request.time;
+    }
+
+    match /providerAvailability/{documentId} {
+      function isProviderOwner() {
+        return request.auth != null &&
+          request.auth.uid == documentId &&
+          get(/databases/$(database)/documents/providers/$(documentId)).data.role == 'provider' &&
+          get(/databases/$(database)/documents/providers/$(documentId)).data.services.hasAny(['Transport']);
+      }
+
+      function isCustomerWithLiveRecord() {
+        return request.auth != null &&
+          get(/databases/$(database)/documents/customers/$(request.auth.uid)).data.role == 'customer' &&
+          resource.data.keys().hasOnly([
+            'status',
+            'serviceArea',
+            'coordinates',
+            'vehicleType',
+            'updatedAt',
+            'expiresAt'
+          ]) &&
+          resource.data.keys().hasAll([
+            'status',
+            'serviceArea',
+            'coordinates',
+            'vehicleType',
+            'updatedAt',
+            'expiresAt'
+          ]) &&
+          resource.data.status == 'available' &&
+          resource.data.serviceArea == 'Gautam Buddha University, Greater Noida' &&
+          resource.data.vehicleType in ['Bike', 'Car'] &&
+          resource.data.coordinates is map &&
+          resource.data.coordinates.keys().hasOnly(['latitude', 'longitude']) &&
+          resource.data.coordinates.latitude is number &&
+          resource.data.coordinates.longitude is number &&
+          resource.data.updatedAt is timestamp &&
+          resource.data.expiresAt is timestamp &&
+          resource.data.expiresAt > request.time;
+      }
+
+      allow get: if isProviderOwner() || isCustomerWithLiveRecord();
+      allow list: if isCustomerWithLiveRecord();
+      allow create, update: if isProviderOwner() &&
+        request.resource.data.keys().hasOnly(['status', 'updatedAt']) &&
+        request.resource.data.keys().hasAll(['status', 'updatedAt']) &&
+        request.resource.data.status == 'unavailable' &&
+        request.resource.data.updatedAt == request.time;
+      allow delete: if false;
     }
 
     match /bookingRequests/{documentId} {
@@ -137,11 +197,18 @@ service cloud.firestore {
     }
 
     match /transportBookings/{documentId} {
-      allow read, update, delete: if false;
-      allow create: if
+      allow get: if request.auth != null &&
+        resource.data.customerUid == request.auth.uid;
+      allow list, update, delete: if false;
+      allow create: if request.auth != null &&
+        request.resource.data.customerUid == request.auth.uid &&
+        get(/databases/$(database)/documents/customers/$(request.auth.uid)).data.role == 'customer' &&
         request.resource.data.keys().hasOnly([
           'service',
           'campus',
+          'customerUid',
+          'customerEmailAddress',
+          'customerMobileNumber',
           'origin',
           'destination',
           'originLabel',
@@ -158,6 +225,10 @@ service cloud.firestore {
         ]) &&
         request.resource.data.service == 'transport' &&
         request.resource.data.campus == 'Gautam Buddha University, Greater Noida' &&
+        request.resource.data.customerEmailAddress == request.auth.token.email &&
+        request.resource.data.customerEmailAddress == get(/databases/$(database)/documents/customers/$(request.auth.uid)).data.emailAddress &&
+        request.resource.data.customerMobileNumber == get(/databases/$(database)/documents/customers/$(request.auth.uid)).data.mobileNumber &&
+        request.resource.data.customerName == get(/databases/$(database)/documents/customers/$(request.auth.uid)).data.fullName &&
         request.resource.data.origin is string &&
         request.resource.data.origin.size() >= 2 &&
         request.resource.data.origin.size() <= 300 &&
@@ -194,11 +265,19 @@ service cloud.firestore {
         request.resource.data.originCoordinates is map &&
         request.resource.data.originCoordinates.keys().hasOnly(['latitude', 'longitude']) &&
         request.resource.data.originCoordinates.latitude is number &&
+        request.resource.data.originCoordinates.latitude >= -90 &&
+        request.resource.data.originCoordinates.latitude <= 90 &&
         request.resource.data.originCoordinates.longitude is number &&
+        request.resource.data.originCoordinates.longitude >= -180 &&
+        request.resource.data.originCoordinates.longitude <= 180 &&
         request.resource.data.destinationCoordinates is map &&
         request.resource.data.destinationCoordinates.keys().hasOnly(['latitude', 'longitude']) &&
         request.resource.data.destinationCoordinates.latitude is number &&
+        request.resource.data.destinationCoordinates.latitude >= -90 &&
+        request.resource.data.destinationCoordinates.latitude <= 90 &&
         request.resource.data.destinationCoordinates.longitude is number &&
+        request.resource.data.destinationCoordinates.longitude >= -180 &&
+        request.resource.data.destinationCoordinates.longitude <= 180 &&
         request.resource.data.status == 'pending' &&
         request.resource.data.createdAt == request.time;
     }

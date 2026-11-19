@@ -9,7 +9,6 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="style.css" />
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 </head>
 <body class="transport-page">
   <header class="header">
@@ -67,114 +66,17 @@
           </div>
           <datalist id="campusLocations"></datalist>
 
-          <label>
-            Full name
-            <input name="customerName" required minlength="2" maxlength="100" autocomplete="name" placeholder="Enter your full name" />
-          </label>
-
           <p class="transport-error" id="transportError" role="alert" hidden></p>
           <button class="btn btn-primary transport-submit" type="submit" id="transportSubmit">
-            Find route and fares <span aria-hidden="true">→</span>
+            Find route and fare <span aria-hidden="true">→</span>
           </button>
         </form>
       </section>
     </div>
-
-    <section class="transport-results" id="transportResults" aria-label="Transport results" hidden>
-      <div class="transport-results-heading">
-        <div>
-          <div class="eyebrow">ROUTE SUMMARY</div>
-          <h2>Your transport options</h2>
-        </div>
-        <p id="routeLookupStatus" role="status" aria-live="polite"></p>
-      </div>
-
-      <div class="transport-results-grid">
-        <article class="transport-result-card">
-          <div class="transport-result-title">
-            <span>01</span>
-            <div>
-              <div class="eyebrow">ROUTE AND NEARBY VEHICLES</div>
-              <h3>Route overview</h3>
-            </div>
-          </div>
-          <div id="routeMap" class="route-map" aria-label="Map showing origin and destination route"></div>
-          <div class="route-details">
-            <div><small>Pickup</small><strong id="routeOrigin">—</strong><small id="originCoordinates">Coordinates unavailable</small></div>
-            <div><small>Destination</small><strong id="routeDestination">—</strong><small id="destinationCoordinates">Coordinates unavailable</small></div>
-            <div><small>Route distance</small><strong id="routeDistance">Calculating...</strong></div>
-          </div>
-          <div class="campus-point-controls">
-            <button class="btn btn-ghost" type="button" id="selectPickupOnMap">Move pickup marker</button>
-            <button class="btn btn-ghost" type="button" id="selectDestinationOnMap">Move destination marker</button>
-          </div>
-          <p class="outside-campus-warning" id="outsideCampusWarning" hidden>A selected point appears outside the approximate campus boundary. Change or confirm it before booking.</p>
-          <button class="btn btn-ghost" type="button" id="confirmOutsideCampus" hidden>Confirm point outside campus</button>
-          <p class="availability-label">Nearby vehicle availability</p>
-          <div class="availability-grid">
-            <div><span>🏍️ Bike</span><strong id="bikeAvailability">Unavailable</strong></div>
-            <div><span>🚗 Car</span><strong id="carAvailability">Unavailable</strong></div>
-          </div>
-          <p class="availability-note">Live vehicle availability is not connected. These values are unavailable, not live counts.</p>
-        </article>
-
-        <article class="transport-result-card vehicle-selection">
-          <div class="transport-result-title">
-            <span>02</span>
-            <div>
-              <div class="eyebrow">VEHICLE SELECTION AND FARE</div>
-              <h3>Choose your vehicle</h3>
-            </div>
-          </div>
-          <div class="vehicle-options" role="radiogroup" aria-label="Vehicle type">
-            <button class="vehicle-option" type="button" role="radio" aria-checked="false" data-vehicle="Bike">
-              <span class="vehicle-icon">🏍️</span>
-              <span class="vehicle-name">Bike</span>
-              <span class="vehicle-rate">₹5/km</span>
-              <strong id="bikeFare">—</strong>
-              <small id="bikeDistance">Distance unavailable</small>
-            </button>
-            <button class="vehicle-option" type="button" role="radio" aria-checked="false" data-vehicle="Car">
-              <span class="vehicle-icon">🚗</span>
-              <span class="vehicle-name">Car</span>
-              <span class="vehicle-rate">₹10/km</span>
-              <strong id="carFare">—</strong>
-              <small id="carDistance">Distance unavailable</small>
-            </button>
-          </div>
-          <p class="fare-note">Fares are estimates and the final charge may differ.</p>
-        </article>
-
-        <article class="transport-result-card booking-action">
-          <div class="transport-result-title">
-            <span>03</span>
-            <div>
-              <div class="eyebrow">BOOKING ACTION</div>
-              <h3>Confirm your ride</h3>
-            </div>
-          </div>
-          <div class="booking-summary">
-            <div><small>Selected vehicle</small><strong id="selectedVehicle">None</strong></div>
-            <div><small>Estimated fare</small><strong id="selectedFare">—</strong></div>
-          </div>
-          <p class="booking-error" id="bookingError" role="alert" hidden></p>
-          <button class="btn btn-primary transport-submit" type="button" id="bookNow" disabled>
-            Book now <span aria-hidden="true">→</span>
-          </button>
-          <p class="booking-status" id="bookingStatus" role="status" aria-live="polite"></p>
-          <div class="transport-success" id="transportSuccess" role="status" aria-live="polite" hidden>
-            <span class="transport-success-icon">✓</span>
-            <h3>Transport booking confirmed!</h3>
-            <p id="transportSuccessText">Your booking was saved successfully.</p>
-            <a class="btn btn-ghost" href="sewa.html#services">Back to services</a>
-          </div>
-        </article>
-      </div>
-    </section>
   </main>
 
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script src="https://www.gstatic.com/firebasejs/11.10.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/11.10.0/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/11.10.0/firebase-firestore-compat.js"></script>
   <script src="firebase.js"></script>
   <script src="transport.js"></script>

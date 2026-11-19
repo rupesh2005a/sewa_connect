@@ -10,6 +10,11 @@ const signedInEmail = document.querySelector("#signedInEmail");
 const signOutButton = document.querySelector("#signOutButton");
 let signupProfilePending = false;
 
+function getPostAuthDestination() {
+  const returnTo = new URLSearchParams(window.location.search).get("returnTo");
+  return returnTo === "transport-results.html" ? returnTo : "sewa.html";
+}
+
 function showMessage(message = "", isError = true) {
   authMessage.textContent = message;
   authMessage.hidden = !message;
@@ -108,7 +113,7 @@ loginForm.addEventListener("submit", async event => {
 
   try {
     await window.firebase.auth().signInWithEmailAndPassword(email, password);
-    window.location.replace("sewa.html");
+    window.location.replace(getPostAuthDestination());
   } catch (error) {
     console.error("Customer sign-in failed:", error);
     showMessage(readableAuthError(error));
@@ -154,7 +159,7 @@ signupForm.addEventListener("submit", async event => {
 
     signupForm.reset();
     signupProfilePending = false;
-    window.location.replace("sewa.html");
+    window.location.replace(getPostAuthDestination());
   } catch (error) {
     signupProfilePending = false;
     console.error("Customer signup failed:", error);
@@ -182,7 +187,7 @@ if (!window.firebase?.auth || !window.sevaFirestore) {
   window.firebase.auth().onAuthStateChanged(user => {
     if (user && signupProfilePending) return;
     if (user) {
-      window.location.replace("sewa.html");
+      window.location.replace(getPostAuthDestination());
       return;
     }
     currentUserPanel(null);
