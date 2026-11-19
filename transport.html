@@ -9,6 +9,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="style.css" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/maplibre-gl@5.21.0/dist/maplibre-gl.css" />
 </head>
 <body class="transport-page">
   <header class="header">
@@ -44,10 +45,11 @@
 
         <form id="transportForm" novalidate>
           <div class="transport-field-grid">
-            <label>
-              Pickup location
-              <input id="origin" name="origin" required maxlength="300" autocomplete="street-address" list="campusLocations" placeholder="Search or select a campus pickup point" />
-            </label>
+            <div class="transport-autocomplete">
+              <label for="origin">Pickup location</label>
+              <input id="origin" name="origin" required maxlength="300" autocomplete="off" aria-autocomplete="list" aria-controls="originSuggestions" aria-expanded="false" placeholder="Search a campus pickup point" />
+              <div id="originSuggestions" class="transport-suggestions" role="listbox" aria-label="Pickup location suggestions" hidden></div>
+            </div>
             <button class="btn btn-ghost location-button" type="button" id="useLocation">
               <span aria-hidden="true">◎</span> Use my current location
             </button>
@@ -57,14 +59,23 @@
             <strong>Selected pickup</strong><span class="selected-address"></span><small class="selected-coordinates"></small>
           </div>
 
-          <label>
-            Destination
-            <input id="destination" name="destination" required maxlength="300" list="campusLocations" placeholder="Search or select a campus destination" />
-          </label>
+          <div class="transport-autocomplete">
+            <label for="destination">Destination</label>
+            <input id="destination" name="destination" required maxlength="300" autocomplete="off" aria-autocomplete="list" aria-controls="destinationSuggestions" aria-expanded="false" placeholder="Search a campus destination" />
+            <div id="destinationSuggestions" class="transport-suggestions" role="listbox" aria-label="Destination suggestions" hidden></div>
+          </div>
           <div class="selected-point" id="destinationPoint" hidden>
             <strong>Selected destination</strong><span class="selected-address"></span><small class="selected-coordinates"></small>
           </div>
-          <datalist id="campusLocations"></datalist>
+          <div class="transport-map-picker">
+            <p>Can’t find a campus place? Select its exact point on the map.</p>
+            <div class="transport-map-picker-actions">
+              <button class="btn btn-ghost" type="button" id="pickPickupOnMap">Choose pickup on map</button>
+              <button class="btn btn-ghost" type="button" id="pickDestinationOnMap">Choose destination on map</button>
+            </div>
+            <p class="location-status" id="locationPickerStatus" role="status" aria-live="polite"></p>
+            <div id="locationPickerMap" class="location-picker-map" aria-label="Map for selecting pickup or destination" hidden></div>
+          </div>
 
           <p class="transport-error" id="transportError" role="alert" hidden></p>
           <button class="btn btn-primary transport-submit" type="submit" id="transportSubmit">
@@ -75,6 +86,7 @@
     </div>
   </main>
 
+  <script src="https://cdn.jsdelivr.net/npm/maplibre-gl@5.21.0/dist/maplibre-gl.js"></script>
   <script src="https://www.gstatic.com/firebasejs/11.10.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/11.10.0/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/11.10.0/firebase-firestore-compat.js"></script>

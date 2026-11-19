@@ -46,7 +46,9 @@
           <p>The existing map extent is approximate, not an official campus boundary. You can retry GPS or adjust the pin, but the app will not mark you live until an authoritative campus boundary and trusted server-side validation are configured. Browser location can also be imprecise or spoofed.</p>
         </aside>
         <h2 class="provider-inbox-title">Incoming requests</h2>
-        <p id="requestInboxStatus" class="provider-flow-note" role="status" aria-live="polite">Provider request delivery is not connected yet. Current Firestore rules deny provider reads and responses on transport bookings.</p>
+        <p id="requestInboxStatus" class="provider-flow-note" role="status" aria-live="polite">Connecting to pending transport requests…</p>
+        <div id="requestInbox" class="provider-request-list" aria-live="polite"></div>
+        <p class="provider-flow-note">All campus requests are shown for now. Pickup-distance matching is not enabled yet.</p>
         <p class="provider-flow-note">Location permission is requested only when you choose Get my location. If live sharing is enabled after verification, this page would need to remain open; background updates are not implemented.</p>
         <a class="btn btn-ghost provider-flow-submit" href="provider-dashboard.html">Back to dashboard</a>
       </div>

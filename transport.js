@@ -2,9 +2,12 @@ const form = document.querySelector("#transportForm");
 const isResultsPage = document.body.dataset.page === "transport-results";
 const originInput = document.querySelector("#origin");
 const destinationInput = document.querySelector("#destination");
-const campusLocationsList = document.querySelector("#campusLocations");
 const useLocationButton = document.querySelector("#useLocation");
 const locationStatus = document.querySelector("#locationStatus");
+const locationPickerStatus = document.querySelector("#locationPickerStatus");
+const locationPickerMap = document.querySelector("#locationPickerMap");
+const pickPickupOnMapButton = document.querySelector("#pickPickupOnMap");
+const pickDestinationOnMapButton = document.querySelector("#pickDestinationOnMap");
 const originPointBox = document.querySelector("#originPoint");
 const destinationPointBox = document.querySelector("#destinationPoint");
 const routeSubmitButton = document.querySelector("#transportSubmit");
@@ -69,6 +72,7 @@ let availabilityRefreshTimer = null;
 let routeTimer = null;
 let routeCalculationId = 0;
 let searchTimers = new WeakMap();
+let searchRequests = new WeakMap();
 const placeCache = new Map();
 
 function setError(message = "") {
@@ -133,6 +137,7 @@ function updateLiveProviderDisplay() {
     element.className = "live-provider-marker";
     element.textContent = icon;
     element.title = `Live ${provider.vehicleType} provider`;
+    element.addEventListener("click", event => event.stopPropagation());
     const marker = new maplibregl.Marker({ element, anchor: "center" })
       .setLngLat([provider.coordinates.longitude, provider.coordinates.latitude])
       .setPopup(new maplibregl.Popup({ offset: 20 }).setText(`Live ${provider.vehicleType} provider`))
@@ -309,84 +314,225 @@ function showCampusWarning() {
 }
 
 async function searchCampusPlace(query) {
-  if (!query || query.trim().length < 3) {
-    throw new Error("Enter at least 3 characters to search.");
+  if (!query || query.trim().length < 2) {
+    throw new Error("Enter at least 2 characters to search.");
   }
 
   const cachedPoint = placeCache.get(query.trim().toLowerCase());
   if (cachedPoint) return cachedPoint;
 
-  const url = `https://photon.komoot.io/api/?q=${encodeURIComponent(`${query}, Gautam Buddha University, Greater Noida`)}&limit=5&lat=${campusCenter.latitude}&lon=${campusCenter.longitude}`;
-  const response = await fetch(url);
-  if (!response.ok) throw new Error("Place search is unavailable. Use the map or drag a marker.");
-
-  const data = await response.json();
-  const features = (data.features || []).filter(feature => {
-    const coordinates = feature.geometry?.coordinates;
-    if (!coordinates) return false;
-    return isWithinApproximateCampus({
-      latitude: coordinates[1],
-      longitude: coordinates[0]
-    });
-  });
-
-  if (!features.length) {
-    throw new Error(`No verified campus-area result for "${query}". Tap the map or drag a marker instead.`);
+  const places = await findCampusPlaces(query);
+  if (!places.length) {
+    throw new Error(`No mapped campus place matches "${query}". Choose the exact point on the map instead.`);
   }
 
-  const properties = features[0].properties || {};
-  const [longitude, latitude] = features[0].geometry.coordinates;
-  const labelParts = [properties.name, properties.street, properties.district, properties.city].filter(Boolean);
-  const point = {
-    latitude,
-    longitude,
-    label: [...new Set(labelParts)].join(", ") || query
-  };
+  const point = places[0];
   placeCache.set(query.trim().toLowerCase(), point);
   return point;
 }
 
-function searchPlaceSuggestions(input) {
-  if (!input || !campusLocationsList) return;
+async function findCampusPlaces(query) {
+  const bbox = [
+    campusBounds.west,
+    campusBounds.south,
+    campusBounds.east,
+    campusBounds.north
+  ].join(",");
+  const params = new URLSearchParams({
+    q: query.trim(),
+    limit: "15",
+    lat: String(campusCenter.latitude),
+    lon: String(campusCenter.longitude),
+    bbox,
+    lang: "en"
+  });
+  const response = await fetch(`https://photon.komoot.io/api/?${params}`);
+  if (!response.ok) throw new Error("Campus place search is unavailable. Try again or choose the point on the map.");
+
+  const data = await response.json();
+  const seen = new Set();
+  return (data.features || []).reduce((places, feature) => {
+    const coordinates = feature.geometry?.coordinates;
+    if (!Array.isArray(coordinates) || coordinates.length < 2) return places;
+
+    const [longitude, latitude] = coordinates;
+    const point = { latitude, longitude };
+    if (!isValidPoint({ ...point, label: "Campus location" }) || !isWithinApproximateCampus(point)) {
+      return places;
+    }
+
+    const properties = feature.properties || {};
+    const labelParts = [
+      properties.name,
+      properties.housenumber && properties.street
+        ? `${properties.housenumber} ${properties.street}`
+        : properties.street,
+      properties.suburb,
+      properties.district,
+      properties.city
+    ].filter(Boolean);
+    const label = [...new Set(labelParts)].join(", ");
+    const key = `${label.toLowerCase()}|${latitude.toFixed(6)},${longitude.toFixed(6)}`;
+    if (!label || seen.has(key)) return places;
+    seen.add(key);
+    places.push({ ...point, label });
+    return places;
+  }, []);
+}
+
+function getSuggestionList(input) {
+  return document.querySelector(`#${input.id}Suggestions`);
+}
+
+function hideSuggestions(input) {
+  const list = getSuggestionList(input);
+  if (!list) return;
+  list.hidden = true;
+  list.replaceChildren();
+  input.setAttribute("aria-expanded", "false");
+}
+
+function showSuggestions(input, list, items) {
+  list.replaceChildren(...items);
+  list.hidden = false;
+  input.setAttribute("aria-expanded", "true");
+}
+
+function createSuggestionButton(label, onSelect, className = "") {
+  const option = document.createElement("button");
+  option.type = "button";
+  option.className = `transport-suggestion${className ? ` ${className}` : ""}`;
+  option.setAttribute("role", "option");
+  option.setAttribute("aria-selected", "false");
+  option.textContent = label;
+  option.addEventListener("pointerdown", event => event.preventDefault());
+  option.addEventListener("click", onSelect);
+  return option;
+}
+
+function openLocationPicker(type) {
+  activePoint = type;
+  if (locationPickerStatus) {
+    locationPickerStatus.textContent = `Tap the map to set the ${type === "pickup" ? "pickup" : "destination"} pin.`;
+  }
+  if (!locationPickerMap) return;
+
+  locationPickerMap.hidden = false;
+  try {
+    initializeMap();
+    requestAnimationFrame(() => map.resize());
+  } catch (error) {
+    console.error("Could not open the campus location picker:", error);
+    setError("The map is unavailable. Check your connection and try again.");
+  }
+}
+
+function searchPlaceSuggestions(input, type) {
+  if (!input) return;
+  const list = getSuggestionList(input);
+  if (!list) return;
+
+  let highlightedIndex = -1;
   input.addEventListener("input", () => {
     clearTimeout(searchTimers.get(input));
+    const requestId = (searchRequests.get(input) || 0) + 1;
+    searchRequests.set(input, requestId);
+    highlightedIndex = -1;
     const query = input.value.trim();
-    if (query.length < 3) return;
+    list.replaceChildren();
+    list.hidden = true;
+    input.setAttribute("aria-expanded", "false");
+    if (query.length < 2) return;
+
+    const loading = document.createElement("div");
+    loading.className = "transport-suggestion-message";
+    loading.textContent = "Searching campus places…";
+    showSuggestions(input, list, [loading]);
 
     const timer = setTimeout(async () => {
       try {
-        const url = `https://photon.komoot.io/api/?q=${encodeURIComponent(`${query}, Gautam Buddha University, Greater Noida`)}&limit=8&lat=${campusCenter.latitude}&lon=${campusCenter.longitude}`;
-        const response = await fetch(url);
-        if (!response.ok) return;
-        const data = await response.json();
+        const places = await findCampusPlaces(query);
+        if (searchRequests.get(input) !== requestId) return;
 
-        campusLocationsList.replaceChildren();
-        (data.features || []).forEach(feature => {
-          const coordinates = feature.geometry?.coordinates;
-          if (!coordinates) return;
-          const point = { latitude: coordinates[1], longitude: coordinates[0] };
-          if (!isWithinApproximateCampus(point)) return;
+        const options = places.map(point => createSuggestionButton(point.label, () => {
+          placeCache.set(query.toLowerCase(), point);
+          placeCache.set(point.label.toLowerCase(), point);
+          input.value = point.label;
+          hideSuggestions(input);
+          setPoint(type, point);
+        }));
 
-          const properties = feature.properties || {};
-          const label = [properties.name, properties.street, properties.district, properties.city]
-            .filter(Boolean)
-            .filter((part, index, values) => values.indexOf(part) === index)
-            .join(", ");
-          if (!label) return;
-          const option = document.createElement("option");
-          option.value = label;
-          campusLocationsList.append(option);
-          placeCache.set(label.toLowerCase(), {
-            ...point,
-            label
-          });
-        });
+        if (places.length) {
+          options.push(createSuggestionButton(
+            "Choose an exact point on the map…",
+            () => {
+              hideSuggestions(input);
+              openLocationPicker(type);
+            },
+            "transport-suggestion-map"
+          ));
+        } else {
+          const noResults = document.createElement("div");
+          noResults.className = "transport-suggestion-message";
+          noResults.textContent = "No mapped campus place found.";
+          options.push(noResults);
+          options.push(createSuggestionButton(
+            "Choose this place on the map…",
+            () => {
+              hideSuggestions(input);
+              openLocationPicker(type);
+            },
+            "transport-suggestion-map"
+          ));
+        }
+        showSuggestions(input, list, options);
+        highlightedIndex = -1;
       } catch (error) {
+        if (searchRequests.get(input) !== requestId) return;
         console.warn("Campus place suggestions are unavailable:", error);
+        const message = document.createElement("div");
+        message.className = "transport-suggestion-message";
+        message.textContent = "Suggestions are unavailable right now.";
+        const mapOption = createSuggestionButton(
+          "Choose the exact point on the map…",
+          () => {
+            hideSuggestions(input);
+            openLocationPicker(type);
+          },
+          "transport-suggestion-map"
+        );
+        showSuggestions(input, list, [message, mapOption]);
       }
-    }, 350);
-
+    }, 250);
     searchTimers.set(input, timer);
+  });
+
+  input.addEventListener("keydown", event => {
+    const options = [...list.querySelectorAll('[role="option"]')];
+    if (event.key === "ArrowDown" && options.length) {
+      event.preventDefault();
+      highlightedIndex = (highlightedIndex + 1) % options.length;
+    } else if (event.key === "ArrowUp" && options.length) {
+      event.preventDefault();
+      highlightedIndex = (highlightedIndex - 1 + options.length) % options.length;
+    } else if (event.key === "Enter" && highlightedIndex >= 0 && options[highlightedIndex]) {
+      event.preventDefault();
+      options[highlightedIndex].click();
+      return;
+    } else if (event.key === "Escape") {
+      hideSuggestions(input);
+      return;
+    } else {
+      return;
+    }
+
+    options.forEach((option, index) => {
+      option.setAttribute("aria-selected", String(index === highlightedIndex));
+    });
+  });
+
+  input.addEventListener("blur", () => {
+    window.setTimeout(() => hideSuggestions(input), 120);
   });
 }
 
@@ -415,13 +561,14 @@ async function calculateRoute(origin, destination) {
 
 function initializeMap() {
   if (!window.maplibregl) throw new Error("The map could not be loaded.");
-  if (!isResultsPage || !document.querySelector("#routeMap")) {
-    throw new Error("The route map is unavailable on this page.");
-  }
   if (map) return;
+  const mapContainer = isResultsPage
+    ? document.querySelector("#routeMap")
+    : locationPickerMap;
+  if (!mapContainer) throw new Error("The campus location map is unavailable on this page.");
 
   map = new maplibregl.Map({
-    container: "routeMap",
+    container: mapContainer,
     style: "https://tiles.waymorphic.com/styles/positron",
     center: [campusCenter.longitude, campusCenter.latitude],
     zoom: 15
@@ -458,12 +605,21 @@ function initializeMap() {
   });
 
   map.on("click", event => {
+    if (event.originalEvent?.target?.closest?.(".maplibregl-marker")) return;
+    const currentLabel = activePoint === "pickup"
+      ? originInput?.value.trim()
+      : destinationInput?.value.trim();
     const point = {
       latitude: event.lngLat.lat,
       longitude: event.lngLat.lng,
-      label: `Map-selected ${activePoint === "pickup" ? "pickup" : "destination"} point`
+      label: currentLabel
+        ? `${currentLabel} (map pin)`
+        : `Map-selected ${activePoint === "pickup" ? "pickup" : "destination"} point`
     };
     setPoint(activePoint, point);
+    if (locationPickerStatus && !isResultsPage) {
+      locationPickerStatus.textContent = `${activePoint === "pickup" ? "Pickup" : "Destination"} pin selected at ${formatCoordinates(point)}.`;
+    }
   });
 
   requestAnimationFrame(() => map.resize());
@@ -569,8 +725,8 @@ function setPoint(type, point) {
     updatePointBox(destinationPointBox, point);
   }
 
-  if (!isResultsPage) return;
   updateMarkers();
+  if (!isResultsPage) return;
   showCampusWarning();
   resetRouteResults();
   routeOrigin.textContent = originPoint?.label || "—";
@@ -598,6 +754,7 @@ function updateMarkers() {
     const element = document.createElement("div");
     element.className = "transport-map-marker pickup-map-marker";
     element.setAttribute("aria-label", "Pickup location");
+    element.addEventListener("click", event => event.stopPropagation());
     originMarker = new maplibregl.Marker({ element, draggable: true })
       .setLngLat([originPoint.longitude, originPoint.latitude])
       .setPopup(new maplibregl.Popup({ offset: 20 }).setText("Pickup — drag to adjust"))
@@ -618,6 +775,7 @@ function updateMarkers() {
     const element = document.createElement("div");
     element.className = "transport-map-marker destination-map-marker";
     element.setAttribute("aria-label", "Destination");
+    element.addEventListener("click", event => event.stopPropagation());
     destinationMarker = new maplibregl.Marker({ element, draggable: true })
       .setLngLat([destinationPoint.longitude, destinationPoint.latitude])
       .setPopup(new maplibregl.Popup({ offset: 20 }).setText("Destination — drag to adjust"))
@@ -771,8 +929,8 @@ useLocationButton?.addEventListener("click", () => {
   );
 });
 
-searchPlaceSuggestions(originInput);
-searchPlaceSuggestions(destinationInput);
+searchPlaceSuggestions(originInput, "pickup");
+searchPlaceSuggestions(destinationInput, "destination");
 
 originInput?.addEventListener("input", () => {
   originPoint = null;
@@ -801,6 +959,9 @@ selectDestinationButton?.addEventListener("click", () => {
   activePoint = "destination";
   routeLookupStatus.textContent = "Tap the map or drag the destination marker.";
 });
+
+pickPickupOnMapButton?.addEventListener("click", () => openLocationPicker("pickup"));
+pickDestinationOnMapButton?.addEventListener("click", () => openLocationPicker("destination"));
 
 confirmOutsideButton?.addEventListener("click", () => {
   outsideConfirmed = true;

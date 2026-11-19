@@ -11,6 +11,8 @@ const useSelectedPinButton = document.querySelector("#useSelectedPinButton");
 const stopSharingButton = document.querySelector("#stopSharingButton");
 const providerIdentity = document.querySelector("#providerIdentity");
 const providerSignOut = document.querySelector("#providerSignOut");
+const requestInbox = document.querySelector("#requestInbox");
+const requestInboxStatus = document.querySelector("#requestInboxStatus");
 
 const campusCenter = [28.4226598, 77.5257227];
 const approximateCampusExtent = {
@@ -25,6 +27,7 @@ let locationMap = null;
 let locationMarker = null;
 let selectedLocation = null;
 let availabilityUnsubscribe = null;
+let requestInboxUnsubscribe = null;
 
 function showMessage(text = "", isError = false) {
   availabilityMessage.textContent = text;
@@ -58,6 +61,86 @@ function setProviderAvailability(status) {
     : "You are currently not sharing your location.";
 }
 
+function formatRequestTime(timestamp) {
+  const date = timestamp?.toDate?.();
+  if (!date || Number.isNaN(date.getTime())) return "Time unavailable";
+  return new Intl.DateTimeFormat("en-IN", {
+    dateStyle: "medium",
+    timeStyle: "short"
+  }).format(date);
+}
+
+function renderTransportRequests(snapshot) {
+  requestInbox.replaceChildren();
+  const requests = [...snapshot.docs].sort((first, second) => {
+    const firstCreatedAt = first.data().createdAt?.toMillis?.() || 0;
+    const secondCreatedAt = second.data().createdAt?.toMillis?.() || 0;
+    return secondCreatedAt - firstCreatedAt;
+  });
+  if (!requests.length) {
+    requestInboxStatus.textContent = "No pending transport requests right now. New requests will appear here automatically.";
+    return;
+  }
+
+  requestInboxStatus.textContent = `${requests.length} pending ${requests.length === 1 ? "request" : "requests"}. This inbox updates live.`;
+  requests.forEach(documentSnapshot => {
+    const request = documentSnapshot.data();
+    const card = document.createElement("article");
+    card.className = "provider-request-card";
+
+    const heading = document.createElement("div");
+    heading.className = "provider-request-heading";
+    const vehicle = document.createElement("strong");
+    vehicle.textContent = `${request.selectedVehicleType === "Car" ? "Car" : "Bike"} request`;
+    const time = document.createElement("time");
+    time.textContent = formatRequestTime(request.createdAt);
+    heading.append(vehicle, time);
+
+    const customer = document.createElement("p");
+    customer.className = "provider-request-customer";
+    customer.textContent = `Passenger: ${request.customerName || "Customer"}`;
+
+    const route = document.createElement("div");
+    route.className = "provider-request-route";
+    const pickup = document.createElement("p");
+    pickup.textContent = `Pickup: ${request.originLabel || request.origin || "Not provided"}`;
+    const destination = document.createElement("p");
+    destination.textContent = `Destination: ${request.destinationLabel || request.destination || "Not provided"}`;
+    route.append(pickup, destination);
+
+    const details = document.createElement("p");
+    details.className = "provider-request-details";
+    const distance = Number(request.routeDistanceKm);
+    const fare = Number(request.estimatedFare);
+    const distanceText = Number.isFinite(distance) ? `${distance.toFixed(2)} km` : "Distance unavailable";
+    const fareText = Number.isFinite(fare) ? `₹${fare.toFixed(2)}` : "Fare unavailable";
+    details.textContent = `${distanceText} · Estimated fare ${fareText}`;
+
+    card.append(heading, customer, route, details);
+    requestInbox.append(card);
+  });
+}
+
+function subscribeToTransportRequests() {
+  if (requestInboxUnsubscribe) requestInboxUnsubscribe();
+  requestInboxStatus.textContent = "Connecting to pending transport requests…";
+  requestInbox.replaceChildren();
+
+  try {
+    requestInboxUnsubscribe = window.sevaFirestore.collection("transportBookings")
+      .where("status", "==", "pending")
+      .onSnapshot(renderTransportRequests, error => {
+        console.error("Could not sync incoming transport requests:", error);
+        requestInboxStatus.textContent = error?.code === "permission-denied"
+          ? "Firebase rules denied access. Publish the transport-provider request read rules."
+          : "Incoming requests could not be synced. Check your connection and Firestore configuration.";
+      });
+  } catch (error) {
+    console.error("Could not start incoming transport request sync:", error);
+    requestInboxStatus.textContent = "Incoming requests could not be synced. Check the Firestore configuration.";
+  }
+}
+
 function setSelectedLocation(latitude, longitude, source, accuracyMeters = null) {
   selectedLocation = { latitude, longitude, source, accuracyMeters };
   useSelectedPinButton.disabled = false;
@@ -73,6 +156,7 @@ function setSelectedLocation(latitude, longitude, source, accuracyMeters = null)
     const element = document.createElement("div");
     element.className = "transport-map-marker pickup-map-marker";
     element.setAttribute("aria-label", "Your selected location");
+    element.addEventListener("click", event => event.stopPropagation());
     locationMarker = new maplibregl.Marker({ element, draggable: true })
       .setLngLat([longitude, latitude])
       .setPopup(new maplibregl.Popup({ offset: 20 }).setText("Your selected location"))
@@ -121,6 +205,7 @@ function initializeLocationMap() {
     updateLocationAccuracyCircle();
   });
   locationMap.on("click", event => {
+    if (event.originalEvent?.target?.closest?.(".maplibregl-marker")) return;
     setSelectedLocation(event.lngLat.lat, event.lngLat.lng, "manual");
   });
   locationMap.on("error", event => {
@@ -235,6 +320,7 @@ async function loadProviderProfile(user) {
       console.error("Could not load the provider location map:", error);
       showMessage("The map is unavailable. You can retry location later, but live sharing remains disabled until campus verification is configured.", true);
     }
+    subscribeToTransportRequests();
   } catch (error) {
     console.error("Could not load provider availability:", error);
     showLoadError(error?.code === "permission-denied"
@@ -367,6 +453,7 @@ providerSignOut.addEventListener("click", async () => {
   providerSignOut.disabled = true;
   try {
     if (availabilityUnsubscribe) availabilityUnsubscribe();
+    if (requestInboxUnsubscribe) requestInboxUnsubscribe();
     await window.firebase.auth().signOut();
     window.location.replace("provider-auth.html");
   } catch (error) {
