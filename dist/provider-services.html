@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Choose the services you offer on Seva Connect." />
+  <title>Choose your services — Seva Connect</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" crossorigin href="/assets/style-DaZ4Dbe-.css">
+</head>
+<body class="provider-flow-page">
+  <header class="header">
+    <div class="container nav-wrap auth-nav provider-flow-nav">
+      <a class="brand" href="sewa.html" aria-label="Seva Connect home">
+        <span class="brand-mark">S<span>+</span></span>
+        <span class="brand-copy">seva<span>connect</span></span>
+      </a>
+      <div class="provider-flow-account">
+        <span id="providerIdentity"></span>
+        <button class="btn btn-ghost" id="providerSignOut" type="button">Sign out</button>
+      </div>
+    </div>
+  </header>
+
+  <main class="provider-flow-main">
+    <section class="provider-flow-card" aria-labelledby="servicesTitle">
+      <div class="eyebrow">YOUR PROVIDER PROFILE</div>
+      <h1 id="servicesTitle">What services do you offer?</h1>
+      <p class="provider-flow-intro">Select all the services you provide. You can update your choices later.</p>
+
+      <p id="servicesLoading" class="provider-flow-status" role="status" aria-live="polite">Checking your provider account…</p>
+      <div id="servicesMessage" class="auth-message" role="alert" hidden></div>
+
+      <form id="servicesForm" hidden>
+        <fieldset class="provider-services-grid" aria-describedby="servicesHelp">
+          <legend class="visually-hidden">Select one or more services</legend>
+          <label class="provider-service-option">
+            <input type="checkbox" name="services" value="Transport" />
+            <span class="provider-service-icon" aria-hidden="true">🛺</span>
+            <span class="provider-service-copy"><strong>Transport</strong><small>Rides and transport services</small></span>
+            <span class="provider-service-check" aria-hidden="true">✓</span>
+          </label>
+          <label class="provider-service-option">
+            <input type="checkbox" name="services" value="Agriculture &amp; equipment" />
+            <span class="provider-service-icon" aria-hidden="true">🚜</span>
+            <span class="provider-service-copy"><strong>Agriculture &amp; equipment</strong><small>Farm work and machinery</small></span>
+            <span class="provider-service-check" aria-hidden="true">✓</span>
+          </label>
+          <label class="provider-service-option">
+            <input type="checkbox" name="services" value="Repair &amp; maintenance" />
+            <span class="provider-service-icon" aria-hidden="true">🧰</span>
+            <span class="provider-service-copy"><strong>Repair &amp; maintenance</strong><small>Repairs and technical help</small></span>
+            <span class="provider-service-check" aria-hidden="true">✓</span>
+          </label>
+          <label class="provider-service-option">
+            <input type="checkbox" name="services" value="Home service" />
+            <span class="provider-service-icon" aria-hidden="true">🏠</span>
+            <span class="provider-service-copy"><strong>Home service</strong><small>Everyday help around the home</small></span>
+            <span class="provider-service-check" aria-hidden="true">✓</span>
+          </label>
+          <label class="provider-service-option">
+            <input type="checkbox" name="services" value="Construction" />
+            <span class="provider-service-icon" aria-hidden="true">🧱</span>
+            <span class="provider-service-copy"><strong>Construction</strong><small>Building and skilled site work</small></span>
+            <span class="provider-service-check" aria-hidden="true">✓</span>
+          </label>
+          <label class="provider-service-option">
+            <input type="checkbox" name="services" value="Other local services" />
+            <span class="provider-service-icon" aria-hidden="true">🤝</span>
+            <span class="provider-service-copy"><strong>Other local services</strong><small>Other services in your community</small></span>
+            <span class="provider-service-check" aria-hidden="true">✓</span>
+          </label>
+        </fieldset>
+        <p id="servicesHelp" class="provider-flow-note">Choose at least one service to continue.</p>
+        <button class="btn btn-primary provider-flow-submit" id="proceedButton" type="submit" disabled>Proceed <span aria-hidden="true">→</span></button>
+      </form>
+
+      <button class="btn btn-ghost provider-flow-submit" id="servicesRetry" type="button" hidden>Try again</button>
+    </section>
+  </main>
+
+  <script src="https://www.gstatic.com/firebasejs/11.10.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/11.10.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/11.10.0/firebase-firestore-compat.js"></script>
+  <script src="firebase.js"></script>
+  <script src="provider-services.js"></script>
+</body>
+</html>

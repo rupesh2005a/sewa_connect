@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Complete your Seva Connect transport provider details." />
+  <title>Transport provider details — Seva Connect</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" crossorigin href="/assets/style-DaZ4Dbe-.css">
+</head>
+<body class="provider-flow-page">
+  <header class="header">
+    <div class="container nav-wrap auth-nav provider-flow-nav">
+      <a class="brand" href="sewa.html" aria-label="Seva Connect home">
+        <span class="brand-mark">S<span>+</span></span>
+        <span class="brand-copy">seva<span>connect</span></span>
+      </a>
+      <div class="provider-flow-account">
+        <span id="providerIdentity"></span>
+        <button class="btn btn-ghost" id="providerSignOut" type="button">Sign out</button>
+      </div>
+    </div>
+  </header>
+
+  <main class="provider-flow-main">
+    <section class="provider-flow-card transport-provider-card" aria-labelledby="transportProviderTitle">
+      <div class="eyebrow">TRANSPORT PROVIDER</div>
+      <h1 id="transportProviderTitle">Complete your transport details</h1>
+      <p class="provider-flow-intro">Provide the details needed for transport service at Gautam Buddha University.</p>
+      <p id="transportProviderLoading" class="provider-flow-status" role="status" aria-live="polite">Checking your provider account…</p>
+      <div id="transportProviderMessage" class="auth-message" role="alert" hidden></div>
+
+      <form id="transportProviderForm" class="transport-provider-form" novalidate hidden>
+        <label class="transport-provider-area">Service area
+          <input name="serviceArea" value="Gautam Buddha University, Greater Noida" readonly required />
+        </label>
+        <label>Vehicle type
+          <select name="vehicleType" required>
+            <option value="">Choose vehicle type</option>
+            <option value="Car">Car</option>
+            <option value="Bike">Bike</option>
+          </select>
+        </label>
+        <label>Vehicle registration number
+          <input name="vehicleRegistrationNumber" required maxlength="20" autocomplete="off" autocapitalize="characters" placeholder="e.g. UP16AB1234" aria-describedby="vehicleRegistrationHelp vehicleRegistrationError" />
+          <small id="vehicleRegistrationHelp">Spaces and hyphens are accepted and removed when saved.</small>
+          <small id="vehicleRegistrationError" class="provider-field-error" aria-live="polite"></small>
+        </label>
+        <label>Date of birth
+          <input name="dateOfBirth" type="date" required aria-describedby="dateOfBirthHelp dateOfBirthError" />
+          <small id="dateOfBirthHelp">You must be at least 18 years old.</small>
+          <small id="dateOfBirthError" class="provider-field-error" aria-live="polite"></small>
+        </label>
+        <label>Driving licence number
+          <input name="drivingLicenceNumber" required maxlength="24" autocomplete="off" autocapitalize="characters" placeholder="Enter your licence number" aria-describedby="drivingLicenceHelp drivingLicenceError" />
+          <small id="drivingLicenceHelp">Enter the Indian licence number; spaces, hyphens, and slashes are removed when saved.</small>
+          <small id="drivingLicenceError" class="provider-field-error" aria-live="polite"></small>
+        </label>
+        <p id="transportProviderHelp" class="provider-flow-note">All fields are required. No document image is required.</p>
+        <button id="transportProviderSubmit" class="btn btn-primary provider-flow-submit" type="submit" disabled>Save and continue <span aria-hidden="true">→</span></button>
+      </form>
+
+      <button id="transportProviderRetry" class="btn btn-ghost provider-flow-submit" type="button" hidden>Try again</button>
+    </section>
+  </main>
+
+  <script src="https://www.gstatic.com/firebasejs/11.10.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/11.10.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/11.10.0/firebase-firestore-compat.js"></script>
+  <script src="firebase.js"></script>
+  <script src="transport-provider.js"></script>
+</body>
+</html>

@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="View your Seva Connect account profile." />
+  <title>My profile — Seva Connect</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" crossorigin href="/assets/style-DaZ4Dbe-.css">
+</head>
+<body class="profile-page">
+  <header class="header">
+    <div class="container nav-wrap auth-nav">
+      <a class="brand" href="sewa.html" aria-label="Seva Connect home">
+        <span class="brand-mark">S<span>+</span></span>
+        <span class="brand-copy">seva<span>connect</span></span>
+      </a>
+      <a class="btn btn-ghost" href="sewa.html">← Back to Seva Connect</a>
+    </div>
+  </header>
+
+  <main class="profile-main">
+    <section class="profile-card" aria-labelledby="profileTitle">
+      <div class="eyebrow">YOUR ACCOUNT</div>
+      <h1 id="profileTitle">My profile</h1>
+      <p class="profile-intro">Your Seva Connect account details.</p>
+      <p id="profileStatus" class="profile-status" role="status" aria-live="polite">Loading your profile…</p>
+      <div id="profileError" class="auth-message error" role="alert" hidden></div>
+      <div id="profileContent" hidden>
+        <span id="profileRole" class="profile-role"></span>
+        <h2 id="profileName"></h2>
+        <dl class="profile-details">
+          <div><dt>Email</dt><dd id="profileEmail"></dd></div>
+          <div><dt>Mobile number</dt><dd id="profileMobile"></dd></div>
+        </dl>
+        <section id="providerDetails" class="profile-provider-details" hidden>
+          <h3>Provider details</h3>
+          <dl class="profile-details">
+            <div><dt>Vehicle number</dt><dd id="profileVehicleNumber"></dd></div>
+            <div><dt>Vehicle type</dt><dd id="profileVehicleType"></dd></div>
+          </dl>
+        </section>
+        <button id="profileSignOut" class="btn btn-primary auth-submit" type="button">Sign out</button>
+      </div>
+      <button id="profileRetry" class="btn btn-ghost auth-submit" type="button" hidden>Try again</button>
+      <p class="auth-note">Your profile is linked to your signed-in Firebase account. Contact support if these details are incorrect.</p>
+    </section>
+  </main>
+
+  <script src="https://www.gstatic.com/firebasejs/11.10.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/11.10.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/11.10.0/firebase-firestore-compat.js"></script>
+  <script src="firebase.js"></script>
+  <script src="profile.js"></script>
+</body>
+</html>

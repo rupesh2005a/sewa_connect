@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Book transport for Gautam Buddha University, Greater Noida." />
+  <title>Transport Booking — Seva Connect</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/maplibre-gl@5.21.0/dist/maplibre-gl.css" />
+  <link rel="stylesheet" crossorigin href="/assets/style-DaZ4Dbe-.css">
+</head>
+<body class="transport-page">
+  <header class="header">
+    <div class="container nav-wrap transport-nav">
+      <a class="brand" href="sewa.html" aria-label="Seva Connect home">
+        <span class="brand-mark">S<span>+</span></span>
+        <span class="brand-copy">seva<span>connect</span></span>
+      </a>
+      <a class="btn btn-ghost" href="sewa.html#services">← All services</a>
+    </div>
+  </header>
+
+  <main class="transport-main">
+    <div class="container transport-layout">
+      <section class="transport-copy">
+        <div class="eyebrow light-eyebrow">SEVA CONNECT TRANSPORT</div>
+        <h1>Book a ride for<br><em>Gautam Buddha University</em></h1>
+        <p>Greater Noida · Enter a starting point and destination, or use your current location for the origin.</p>
+        <div class="transport-campus-card">
+          <span class="transport-campus-icon">⌖</span>
+          <div><strong>Service area</strong><small>Gautam Buddha University, Greater Noida</small></div>
+        </div>
+      </section>
+
+      <section class="transport-form-card" aria-labelledby="transportFormTitle">
+        <div class="transport-form-heading">
+          <span class="transport-form-icon">🛺</span>
+          <div>
+            <div class="eyebrow">TRANSPORT REQUEST</div>
+            <h2 id="transportFormTitle">Where are you travelling?</h2>
+          </div>
+        </div>
+
+        <form id="transportForm" novalidate>
+          <div class="transport-field-grid">
+            <div class="transport-autocomplete">
+              <label for="origin">Pickup location</label>
+              <input id="origin" name="origin" required maxlength="300" autocomplete="off" aria-autocomplete="list" aria-controls="originSuggestions" aria-expanded="false" placeholder="Search a campus pickup point" />
+              <div id="originSuggestions" class="transport-suggestions" role="listbox" aria-label="Pickup location suggestions" hidden></div>
+            </div>
+            <button class="btn btn-ghost location-button" type="button" id="useLocation">
+              <span aria-hidden="true">◎</span> Use my current location
+            </button>
+          </div>
+          <p class="location-status" id="locationStatus" role="status" aria-live="polite"></p>
+          <div class="selected-point" id="originPoint" hidden>
+            <strong>Selected pickup</strong><span class="selected-address"></span><small class="selected-coordinates"></small>
+          </div>
+
+          <div class="transport-autocomplete">
+            <label for="destination">Destination</label>
+            <input id="destination" name="destination" required maxlength="300" autocomplete="off" aria-autocomplete="list" aria-controls="destinationSuggestions" aria-expanded="false" placeholder="Search a campus destination" />
+            <div id="destinationSuggestions" class="transport-suggestions" role="listbox" aria-label="Destination suggestions" hidden></div>
+          </div>
+          <div class="selected-point" id="destinationPoint" hidden>
+            <strong>Selected destination</strong><span class="selected-address"></span><small class="selected-coordinates"></small>
+          </div>
+          <div class="transport-map-picker">
+            <p>Can’t find a campus place? Select its exact point on the map.</p>
+            <div class="transport-map-picker-actions">
+              <button class="btn btn-ghost" type="button" id="pickPickupOnMap">Choose pickup on map</button>
+              <button class="btn btn-ghost" type="button" id="pickDestinationOnMap">Choose destination on map</button>
+            </div>
+            <p class="location-status" id="locationPickerStatus" role="status" aria-live="polite"></p>
+            <div id="locationPickerMap" class="location-picker-map" aria-label="Map for selecting pickup or destination" hidden></div>
+          </div>
+
+          <p class="transport-error" id="transportError" role="alert" hidden></p>
+          <button class="btn btn-primary transport-submit" type="submit" id="transportSubmit">
+            Find route and fare <span aria-hidden="true">→</span>
+          </button>
+        </form>
+      </section>
+    </div>
+  </main>
+
+  <script src="https://cdn.jsdelivr.net/npm/maplibre-gl@5.21.0/dist/maplibre-gl.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/11.10.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/11.10.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/11.10.0/firebase-firestore-compat.js"></script>
+  <script src="firebase.js"></script>
+  <script src="transport.js"></script>
+</body>
+</html>
