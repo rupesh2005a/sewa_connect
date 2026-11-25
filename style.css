@@ -162,6 +162,14 @@ h1 em, h2 em {
   color: var(--green);
 }
 
+[data-auth-public][hidden] {
+  display: none !important;
+}
+
+#serviceSearchPlacement .hero-search {
+  margin-bottom: 24px;
+}
+
 .nav-actions {
   display: flex;
   gap: 10px;
@@ -664,6 +672,24 @@ h1 em, h2 em {
   display: none;
 }
 
+.service-card.coming-soon {
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+.service-card.coming-soon .service-image img,
+.service-card.coming-soon .service-emoji,
+.service-card.coming-soon .card-count,
+.service-card.coming-soon .service-info {
+  opacity: 0.58;
+}
+
+.service-card.coming-soon:hover,
+.service-card.coming-soon .service-image img {
+  transform: none;
+  box-shadow: none;
+}
+
 .service-image {
   height: 178px;
   position: relative;
@@ -716,6 +742,26 @@ h1 em, h2 em {
   color: white;
   font-size: 10px;
   letter-spacing: 0.12em;
+}
+
+.coming-soon-badge {
+  position: absolute;
+  z-index: 2;
+  top: 12px;
+  right: 12px;
+  padding: 6px 9px;
+  border: 1px solid rgba(255, 255, 255, 0.45);
+  border-radius: 999px;
+  background: var(--green-dark);
+  color: white;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  pointer-events: none;
+}
+
+.coming-soon-badge[hidden] {
+  display: none;
 }
 
 .service-info {

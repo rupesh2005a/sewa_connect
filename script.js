@@ -396,8 +396,39 @@ requestForm?.addEventListener("submit", async event => {
 });
 
 const navActions = $("#navActions");
+const authPublicElements = $$("[data-auth-public]");
+const comingSoonCards = $$("[data-coming-soon]");
+const heroSearchBar = $(".hero-search");
+const serviceSearchPlacement = $("#serviceSearchPlacement");
+const heroSearchParent = heroSearchBar?.parentNode;
+const heroSearchNextSibling = heroSearchBar?.nextSibling;
 
 function renderNavigationUser(user) {
+    const isAuthenticated = Boolean(user);
+    authPublicElements.forEach(element => {
+        element.hidden = isAuthenticated;
+    });
+
+    comingSoonCards.forEach(card => {
+        card.classList.toggle("coming-soon", isAuthenticated);
+        if (isAuthenticated) {
+            card.setAttribute("aria-disabled", "true");
+        } else {
+            card.removeAttribute("aria-disabled");
+        }
+        card.querySelectorAll("button").forEach(button => {
+            button.disabled = isAuthenticated;
+        });
+        const badge = $(".coming-soon-badge", card);
+        if (badge) badge.hidden = !isAuthenticated;
+    });
+
+    if (isAuthenticated && heroSearchBar && serviceSearchPlacement) {
+        serviceSearchPlacement.append(heroSearchBar);
+    } else if (!isAuthenticated && heroSearchBar && heroSearchParent) {
+        heroSearchParent.insertBefore(heroSearchBar, heroSearchNextSibling);
+    }
+
     if (!navActions) return;
     if (!user) {
         navActions.innerHTML = '<a class="btn btn-ghost" href="auth.html">Log in</a><a class="btn btn-primary" href="provider-auth.html">Join as provider <span>↗</span></a>';
@@ -408,7 +439,7 @@ function renderNavigationUser(user) {
     navActions.innerHTML = `
         <span class="nav-user-label" title="${escapeHtml(identity)}">Signed in as <strong>${escapeHtml(identity)}</strong></span>
         <a class="btn btn-ghost" href="profile.html">My profile</a>
-        <button class="btn btn-primary" type="button" data-sign-out>Sign out</button>
+        <button class="btn btn-primary" type="button" data-sign-out>Logout</button>
     `;
 }
 

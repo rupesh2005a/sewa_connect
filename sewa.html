@@ -11,7 +11,7 @@
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-  <div class="topline"><div class="container topline-inner"><span>🌿 Built for villages. Made for everyone.</span><span>Connecting Rural Communities with Reliable Services.</span></div></div>
+  <div class="topline" data-auth-public><div class="container topline-inner"><span>🌿 Built for villages. Made for everyone.</span><span>Connecting Rural Communities with Reliable Services.</span></div></div>
   <header class="header">
     <div class="container nav-wrap">
       <a class="brand" href="#home" aria-label="Seva Connect home">
@@ -20,14 +20,14 @@
       </a>
       <button class="menu-toggle" id="menuToggle" aria-label="Toggle navigation" aria-expanded="false">☰</button>
       <nav class="nav" id="mainNav">
-        <a href="#services">Explore services</a><a href="#how-it-works">How it works</a><a href="#providers">For providers</a><a href="#about">About us</a>
+        <a href="#services">Explore services</a><a href="#how-it-works" data-auth-public>How it works</a><a href="#providers" data-auth-public>For providers</a><a href="#about" data-auth-public>About us</a>
       </nav>
       <div class="nav-actions" id="navActions" aria-live="polite"><a class="btn btn-ghost" href="auth.html">Log in</a><a class="btn btn-primary" href="provider-auth.html">Join as provider <span>↗</span></a></div>
     </div>
   </header>
 
   <main>
-    <section class="hero" id="home">
+    <section class="hero" id="home" data-auth-public>
       <div class="hero-orb orb-one"></div><div class="hero-orb orb-two"></div>
       <div class="container hero-grid">
         <div class="hero-content">
@@ -66,29 +66,30 @@
           <button class="category-tab" data-category="home">🏠 Home</button>
           <button class="category-tab" data-category="construction">🧱 Construction</button>
         </div>
+        <div id="serviceSearchPlacement"></div>
         <div class="service-grid" id="serviceGrid">
           <article class="service-card transport-card" data-category="transport" data-search="auto bike car tempo goods vehicle taxi wedding vehicle transport" role="link" tabindex="0" aria-label="Book transport for Gautam Buddha University">
             <div class="service-image transport-image"><img src="https://images.unsplash.com/photo-1519681393784-d120267933ba?auto=format&fit=crop&w=700&q=80" alt="Rural road through green hills"><span class="service-emoji">🛺</span><span class="card-count">01 / 06</span></div>
             <div class="service-info"><div class="service-title"><h3>Transport</h3><span class="round-arrow">↗</span></div><p>Get where you need to go, or move goods with ease.</p><div class="chips"><span>Auto</span><span>Bike</span><span>Car</span><span>Tempo</span><span>Goods vehicle</span><span>Taxi</span></div><button class="text-link" data-transport>Explore transport <span>→</span></button></div>
           </article>
-          <article class="service-card" data-category="agriculture" data-search="tractor jcb harvester thresher farm equipment agricultural machinery ploughing harvesting">
-            <div class="service-image agriculture-image"><img src="https://images.unsplash.com/photo-1500382017468-9049fed747ef?auto=format&fit=crop&w=700&q=80" alt="Green fields ready for farm work"><span class="service-emoji">🚜</span><span class="card-count">02 / 06</span></div>
+          <article class="service-card" data-coming-soon data-category="agriculture" data-search="tractor jcb harvester thresher farm equipment agricultural machinery ploughing harvesting">
+            <div class="service-image agriculture-image"><img src="https://images.unsplash.com/photo-1500382017468-9049fed747ef?auto=format&fit=crop&w=700&q=80" alt="Green fields ready for farm work"><span class="service-emoji">🚜</span><span class="card-count">02 / 06</span><span class="coming-soon-badge" hidden>Coming Soon</span></div>
             <div class="service-info"><div class="service-title"><h3>Agriculture & equipment</h3><span class="round-arrow">↗</span></div><p>Find machinery and support for your next farm task.</p><div class="chips"><span>Tractor</span><span>JCB</span><span>Harvester</span><span>Thresher</span><span>Farm equipment</span></div><button class="text-link" data-pick="agriculture">Explore agriculture <span>→</span></button></div>
           </article>
-          <article class="service-card" data-category="repair" data-search="electrician plumber mechanic water pump appliance cooler fan repair">
-            <div class="service-image repair-image"><img src="https://images.unsplash.com/photo-1581092921461-eab62e97a780?auto=format&fit=crop&w=700&q=80" alt="Technician working on equipment"><span class="service-emoji">🧰</span><span class="card-count">03 / 06</span></div>
+          <article class="service-card" data-coming-soon data-category="repair" data-search="electrician plumber mechanic water pump appliance cooler fan repair">
+            <div class="service-image repair-image"><img src="https://images.unsplash.com/photo-1581092921461-eab62e97a780?auto=format&fit=crop&w=700&q=80" alt="Technician working on equipment"><span class="service-emoji">🧰</span><span class="card-count">03 / 06</span><span class="coming-soon-badge" hidden>Coming Soon</span></div>
             <div class="service-info"><div class="service-title"><h3>Repair & maintenance</h3><span class="round-arrow">↗</span></div><p>Get everyday repairs handled by skilled local workers.</p><div class="chips"><span>Electrician</span><span>Plumber</span><span>Mechanic</span><span>Pump repair</span></div><button class="text-link" data-pick="repair">Find repair help <span>→</span></button></div>
           </article>
-          <article class="service-card" data-category="home" data-search="carpenter painter cleaner handyman home service">
-            <div class="service-image home-image"><img src="https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?auto=format&fit=crop&w=700&q=80" alt="Welcoming home interior"><span class="service-emoji">🏠</span><span class="card-count">04 / 06</span></div>
+          <article class="service-card" data-coming-soon data-category="home" data-search="carpenter painter cleaner handyman home service">
+            <div class="service-image home-image"><img src="https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?auto=format&fit=crop&w=700&q=80" alt="Welcoming home interior"><span class="service-emoji">🏠</span><span class="card-count">04 / 06</span><span class="coming-soon-badge" hidden>Coming Soon</span></div>
             <div class="service-info"><div class="service-title"><h3>Home services</h3><span class="round-arrow">↗</span></div><p>Make home projects and everyday tasks easier.</p><div class="chips"><span>Carpenter</span><span>Painter</span><span>Cleaner</span><span>Handyman</span></div><button class="text-link" data-pick="home">Explore home services <span>→</span></button></div>
           </article>
-          <article class="service-card" data-category="construction" data-search="mason welder construction worker machine operator">
-            <div class="service-image construction-image"><img src="https://images.unsplash.com/photo-1504307651254-35680f356dfd?auto=format&fit=crop&w=700&q=80" alt="Construction work in progress"><span class="service-emoji">🧱</span><span class="card-count">05 / 06</span></div>
+          <article class="service-card" data-coming-soon data-category="construction" data-search="mason welder construction worker machine operator">
+            <div class="service-image construction-image"><img src="https://images.unsplash.com/photo-1504307651254-35680f356dfd?auto=format&fit=crop&w=700&q=80" alt="Construction work in progress"><span class="service-emoji">🧱</span><span class="card-count">05 / 06</span><span class="coming-soon-badge" hidden>Coming Soon</span></div>
             <div class="service-info"><div class="service-title"><h3>Construction</h3><span class="round-arrow">↗</span></div><p>Connect with experienced hands for building work.</p><div class="chips"><span>Mason</span><span>Welder</span><span>Construction worker</span><span>Machine operator</span></div><button class="text-link" data-pick="construction">Find skilled workers <span>→</span></button></div>
           </article>
-          <article class="service-card" data-category="other" data-search="farm labour tailor skilled worker other services">
-            <div class="service-image other-image"><img src="https://images.unsplash.com/photo-1472396961693-142e6e269027?auto=format&fit=crop&w=700&q=80" alt="Peaceful rural countryside"><span class="service-emoji">🤝</span><span class="card-count">06 / 06</span></div>
+          <article class="service-card" data-coming-soon data-category="other" data-search="farm labour tailor skilled worker other services">
+            <div class="service-image other-image"><img src="https://images.unsplash.com/photo-1472396961693-142e6e269027?auto=format&fit=crop&w=700&q=80" alt="Peaceful rural countryside"><span class="service-emoji">🤝</span><span class="card-count">06 / 06</span><span class="coming-soon-badge" hidden>Coming Soon</span></div>
             <div class="service-info"><div class="service-title"><h3>Other local services</h3><span class="round-arrow">↗</span></div><p>Discover other skilled people and services near you.</p><div class="chips"><span>Farm labour</span><span>Tailor</span><span>Skilled workers</span></div><button class="text-link" data-pick="other">Explore more <span>→</span></button></div>
           </article>
         </div>
@@ -96,7 +97,7 @@
       </div>
     </section>
 
-    <section class="how-section section-pad" id="how-it-works">
+    <section class="how-section section-pad" id="how-it-works" data-auth-public>
       <div class="container how-grid">
         <div class="how-copy"><div class="eyebrow">A BETTER WAY TO GET THINGS DONE</div><h2>Simple steps.<br><em>Real connections.</em></h2><p>Finding help shouldn't take all day. Seva Connect brings the process into one easy-to-use place.</p>
           <div class="steps">
@@ -114,14 +115,14 @@
       </div>
     </section>
 
-    <section class="provider-section" id="providers">
+    <section class="provider-section" id="providers" data-auth-public>
       <div class="container provider-grid">
         <div class="provider-art"><div class="provider-circle"></div><img src="https://images.unsplash.com/photo-1592982537447-7440770cbfc9?auto=format&fit=crop&w=900&q=85" alt="Farmer standing in a green field" /><div class="provider-sticker">Your skills<br>make a difference <span>✦</span></div></div>
         <div class="provider-copy"><div class="eyebrow light-eyebrow">ARE YOU A LOCAL SERVICE PROVIDER?</div><h2>Good work deserves<br><em>to be discovered.</em></h2><p>Join a community that helps customers find local drivers, equipment owners, repair professionals and skilled workers.</p><ul class="benefit-list"><li><span>✓</span> Create your service profile</li><li><span>✓</span> Add vehicles, equipment and availability</li><li><span>✓</span> Receive and manage booking requests</li><li><span>✓</span> Build trust through customer reviews</li></ul><a class="btn btn-light" href="provider-auth.html">Become a service provider <span>↗</span></a></div>
       </div>
     </section>
 
-    <section class="trust-section section-pad" id="about">
+    <section class="trust-section section-pad" id="about" data-auth-public>
       <div class="container trust-grid">
         <div><div class="eyebrow">WHY SEVA CONNECT?</div><h2>Made around the way<br><em>communities work.</em></h2></div>
         <div class="trust-item"><span class="trust-icon">⌖</span><h3>Location-based discovery</h3><p>Look for services around your village or chosen area.</p></div>
@@ -130,10 +131,10 @@
       </div>
     </section>
 
-    <section class="cta-section"><div class="container cta-box"><div><span class="cta-kicker">YOUR NEED. YOUR COMMUNITY.</span><h2>Let's make finding help<br><em>a little easier.</em></h2></div><button class="btn btn-primary btn-large" id="ctaExplore">Explore services <span>→</span></button><div class="cta-leaf">✳</div></div></section>
+    <section class="cta-section" data-auth-public><div class="container cta-box"><div><span class="cta-kicker">YOUR NEED. YOUR COMMUNITY.</span><h2>Let's make finding help<br><em>a little easier.</em></h2></div><button class="btn btn-primary btn-large" id="ctaExplore">Explore services <span>→</span></button><div class="cta-leaf">✳</div></div></section>
   </main>
 
-  <footer class="footer"><div class="container footer-main"><div class="footer-brand"><a class="brand brand-footer" href="#home"><span class="brand-mark">S<span>+</span></span><span class="brand-copy">seva<span>connect</span></span></a><p>Connecting Rural Communities<br>with Reliable Services.</p></div><div class="footer-links"><strong>Explore</strong><a href="#services">All services</a><a href="#how-it-works">How it works</a><a href="provider-auth.html">Join as provider</a></div><div class="footer-links"><strong>Service categories</strong><a href="#services" data-footer-category="transport">Transport</a><a href="#services" data-footer-category="agriculture">Agriculture</a><a href="#services" data-footer-category="repair">Repair & maintenance</a></div><div class="footer-note"><strong>Built for local communities.</strong><p>Helping people find the services they need, closer to home.</p><a href="#home" class="back-top">Back to top ↑</a></div></div><div class="container footer-bottom"><span>© <span id="year"></span> Seva Connect. Student project prototype.</span><span>Designed with care for rural India <b>♥</b></span></div></footer>
+  <footer class="footer" data-auth-public><div class="container footer-main"><div class="footer-brand"><a class="brand brand-footer" href="#home"><span class="brand-mark">S<span>+</span></span><span class="brand-copy">seva<span>connect</span></span></a><p>Connecting Rural Communities<br>with Reliable Services.</p></div><div class="footer-links"><strong>Explore</strong><a href="#services">All services</a><a href="#how-it-works">How it works</a><a href="provider-auth.html">Join as provider</a></div><div class="footer-links"><strong>Service categories</strong><a href="#services" data-footer-category="transport">Transport</a><a href="#services" data-footer-category="agriculture">Agriculture</a><a href="#services" data-footer-category="repair">Repair & maintenance</a></div><div class="footer-note"><strong>Built for local communities.</strong><p>Helping people find the services they need, closer to home.</p><a href="#home" class="back-top">Back to top ↑</a></div></div><div class="container footer-bottom"><span>© <span id="year"></span> Seva Connect. Student project prototype.</span><span>Designed with care for rural India <b>♥</b></span></div></footer>
 
   <div class="modal-backdrop" id="modalBackdrop" hidden>
     <section class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
