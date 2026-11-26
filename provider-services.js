@@ -14,6 +14,7 @@ const allowedServices = [
   "Other local services"
 ];
 let currentProvider = null;
+let currentProfile = null;
 let profileLoadPending = false;
 
 function showMessage(text = "", isError = true) {
@@ -58,6 +59,7 @@ async function loadProviderServices(user) {
     }
 
     const profile = snapshot.data();
+    currentProfile = profile;
     providerIdentity.textContent = profile.fullName || user.email || "Provider account";
     const savedServices = Array.isArray(profile.services)
       ? profile.services.filter(service => allowedServices.includes(service))
@@ -89,15 +91,19 @@ servicesForm.addEventListener("submit", async event => {
   const selectedServices = updateSelectionState();
   if (!currentProvider || selectedServices.length === 0) return;
 
+  const hasTransport = selectedServices.includes("Transport");
+  const hasTransportDetails = currentProfile?.transportDetails?.service === "Transport";
+  const onboardingComplete = !hasTransport || hasTransportDetails;
   proceedButton.disabled = true;
   proceedButton.textContent = "Saving your services…";
   showMessage();
   try {
     await window.sevaFirestore.collection("providers").doc(currentProvider.uid).update({
-      services: selectedServices
+      services: selectedServices,
+      onboardingComplete
     });
-    const nextPage = selectedServices.includes("Transport")
-      ? "transport-provider.html"
+    const nextPage = hasTransport
+      ? hasTransportDetails ? "provider-availability.html" : "transport-provider.html"
       : "provider-dashboard.html";
     showMessage("Your services were saved. Continuing to the next step…", false);
     window.setTimeout(() => window.location.replace(nextPage), 700);

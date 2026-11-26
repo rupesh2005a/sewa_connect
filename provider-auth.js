@@ -76,6 +76,31 @@ async function getProviderProfile(uid) {
   return snapshot.data();
 }
 
+function getProviderOnboardingState(profile) {
+  const services = Array.isArray(profile.services) ? profile.services : [];
+  const hasServices = services.length > 0;
+  const hasTransport = services.includes("Transport");
+  const hasTransportDetails = profile.transportDetails?.service === "Transport";
+  const onboardingFieldsComplete = hasServices && (!hasTransport || hasTransportDetails);
+  const isComplete = hasServices && (profile.onboardingComplete === true || onboardingFieldsComplete);
+
+  let destination = "provider-services.html";
+  if (hasServices && hasTransport && !hasTransportDetails) {
+    destination = "transport-provider.html";
+  } else if (isComplete && hasTransport) {
+    destination = "provider-availability.html";
+  } else if (isComplete) {
+    destination = "provider-dashboard.html";
+  }
+
+  return { isComplete, destination };
+}
+
+function continueProviderOnboarding(profile) {
+  const { destination } = getProviderOnboardingState(profile);
+  window.location.replace(destination);
+}
+
 async function signOutAfterProviderCheck() {
   try {
     await window.firebase.auth().signOut();
@@ -126,7 +151,7 @@ loginForm.addEventListener("submit", async event => {
       return;
     }
 
-    window.location.replace("provider-services.html");
+    continueProviderOnboarding(profile);
   } finally {
     actionPending = false;
     setLoading(loginForm, false, "Log in →");
@@ -155,6 +180,8 @@ signupForm.addEventListener("submit", async event => {
       fullName,
       mobileNumber,
       emailAddress: email,
+      onboardingComplete: false,
+      approvalStatus: "pending",
       createdAt: window.firebase.firestore.FieldValue.serverTimestamp()
     });
     window.location.replace("provider-services.html");
@@ -192,17 +219,23 @@ if (!window.firebase?.auth || !window.sevaFirestore) {
 
     actionPending = true;
     try {
-      const profile = await getProviderProfile(user.uid);
-      if (profile) {
-        window.location.replace("provider-services.html");
+      let profile;
+      try {
+        profile = await getProviderProfile(user.uid);
+      } catch (error) {
+        console.error("Could not check the signed-in provider:", error);
+        await signOutAfterProviderCheck();
+        showMessage("We could not verify this provider account. Check your connection and try again.");
         return;
       }
-      await signOutAfterProviderCheck();
-      showMessage("Provider account not found for this signed-in user. Log in with a provider account or sign up.");
-    } catch (error) {
-      console.error("Could not check the signed-in provider:", error);
-      await signOutAfterProviderCheck();
-      showMessage("We could not verify this provider account. Check your connection and try again.");
+
+      if (!profile) {
+        await signOutAfterProviderCheck();
+        showMessage("Provider account not found for this signed-in user. Log in with a provider account or sign up.");
+        return;
+      }
+
+      continueProviderOnboarding(profile);
     } finally {
       actionPending = false;
       setReady(true);

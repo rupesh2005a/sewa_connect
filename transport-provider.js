@@ -206,7 +206,8 @@ transportProviderForm.addEventListener("submit", async event => {
         vehicleRegistrationNumber: registration,
         dateOfBirth: window.firebase.firestore.Timestamp.fromDate(birthDate),
         drivingLicenceNumber: licence
-      }
+      },
+      onboardingComplete: true
     });
     showMessage("Your transport provider details were saved. Opening availability…", false);
     window.setTimeout(() => window.location.replace("provider-availability.html"), 700);

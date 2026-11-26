@@ -6,6 +6,7 @@ const transportDetailsLink = document.querySelector("#transportDetailsLink");
 const providerAvailabilityLink = document.querySelector("#providerAvailabilityLink");
 const providerIdentity = document.querySelector("#providerIdentity");
 const providerSignOut = document.querySelector("#providerSignOut");
+const providerApprovalNotice = document.querySelector("#providerApprovalNotice");
 
 function showDashboardError(text) {
   dashboardStatus.hidden = true;
@@ -31,8 +32,16 @@ async function loadDashboard(user) {
     providerIdentity.textContent = profile.fullName || user.email || "Provider account";
     const hasTransport = services.includes("Transport");
     const hasTransportDetails = profile.transportDetails?.service === "Transport";
+    const hasApprovalStatus = Object.prototype.hasOwnProperty.call(profile, "approvalStatus");
+    const isApproved = !hasApprovalStatus || profile.approvalStatus === "approved";
+    if (!isApproved) {
+      providerApprovalNotice.textContent = profile.approvalStatus === "pending"
+        ? "Your provider profile is awaiting administrator approval. You can review your saved services while it is pending."
+        : "Your provider profile is not approved for service activity. Please contact support.";
+      providerApprovalNotice.hidden = false;
+    }
     transportDetailsLink.hidden = !hasTransport;
-    providerAvailabilityLink.hidden = !hasTransport || !hasTransportDetails;
+    providerAvailabilityLink.hidden = !hasTransport || !hasTransportDetails || !isApproved;
     dashboardServices.replaceChildren(...services.map(service => {
       const item = document.createElement("li");
       item.textContent = service;

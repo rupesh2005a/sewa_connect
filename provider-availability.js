@@ -1,4 +1,5 @@
 const availabilityLoading = document.querySelector("#availabilityLoading");
+const providerApprovalMessage = document.querySelector("#providerApprovalMessage");
 const availabilityContent = document.querySelector("#availabilityContent");
 const availabilityState = document.querySelector("#availabilityState");
 const availabilityMessage = document.querySelector("#availabilityMessage");
@@ -281,6 +282,7 @@ async function loadProviderProfile(user) {
   availabilityLoading.hidden = false;
   availabilityLoading.textContent = "Loading your provider profile…";
   availabilityContent.hidden = true;
+  providerApprovalMessage.hidden = true;
   availabilityRetry.hidden = true;
   availabilityError.hidden = true;
 
@@ -302,6 +304,16 @@ async function loadProviderProfile(user) {
     }
 
     providerIdentity.textContent = profile.fullName || user.email || "Provider account";
+    const hasApprovalStatus = Object.prototype.hasOwnProperty.call(profile, "approvalStatus");
+    if (hasApprovalStatus && profile.approvalStatus !== "approved") {
+      providerApprovalMessage.textContent = profile.approvalStatus === "pending"
+        ? "Your provider profile is awaiting administrator approval. Availability and incoming transport requests will be enabled after approval."
+        : "Your provider profile is not approved for transport activity. Please contact support.";
+      providerApprovalMessage.hidden = false;
+      availabilityLoading.hidden = true;
+      return;
+    }
+
     const availabilitySnapshot = await window.sevaFirestore.collection("providerAvailability").doc(user.uid).get();
     setProviderAvailability(availabilitySnapshot.exists ? availabilitySnapshot.data().status : "unavailable");
     if (availabilityUnsubscribe) availabilityUnsubscribe();

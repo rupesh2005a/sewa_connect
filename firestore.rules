@@ -2,9 +2,19 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
+    function isAdmin() {
+      return request.auth != null && request.auth.token.admin == true;
+    }
+
+    function providerIsApproved(provider) {
+      return !provider.keys().hasAny(['approvalStatus']) ||
+        provider.approvalStatus == 'approved';
+    }
+
     function isTransportProvider() {
       return request.auth != null &&
         exists(/databases/$(database)/documents/providers/$(request.auth.uid)) &&
+        providerIsApproved(get(/databases/$(database)/documents/providers/$(request.auth.uid)).data) &&
         get(/databases/$(database)/documents/providers/$(request.auth.uid)).data.role == 'provider' &&
         get(/databases/$(database)/documents/providers/$(request.auth.uid)).data.services is list &&
         get(/databases/$(database)/documents/providers/$(request.auth.uid)).data.services.hasAny(['Transport']);
@@ -37,15 +47,34 @@ service cloud.firestore {
     }
 
     match /providers/{documentId} {
-      allow get: if request.auth != null && request.auth.uid == documentId;
-      allow list, delete: if false;
+      function hasCompletedOnboarding(profile) {
+        return profile.keys().hasAny(['services']) &&
+          profile.services is list &&
+          profile.services.size() > 0 &&
+          (
+            !profile.services.hasAny(['Transport']) ||
+            (
+              profile.keys().hasAny(['transportDetails']) &&
+              profile.transportDetails is map &&
+              profile.transportDetails.service == 'Transport'
+            )
+          );
+      }
+
+      allow get: if request.auth != null &&
+        (request.auth.uid == documentId || isAdmin());
+      allow list: if isAdmin();
+      allow delete: if false;
       allow create: if request.auth != null &&
         request.auth.uid == documentId &&
+        !exists(/databases/$(database)/documents/customers/$(request.auth.uid)) &&
         request.resource.data.keys().hasOnly([
           'role',
           'fullName',
           'mobileNumber',
           'emailAddress',
+          'onboardingComplete',
+          'approvalStatus',
           'createdAt'
         ]) &&
         request.resource.data.role == 'provider' &&
@@ -59,11 +88,13 @@ service cloud.firestore {
         request.resource.data.emailAddress.size() >= 3 &&
         request.resource.data.emailAddress.size() <= 254 &&
         request.resource.data.emailAddress == request.auth.token.email &&
+        request.resource.data.onboardingComplete == false &&
+        request.resource.data.approvalStatus == 'pending' &&
         request.resource.data.createdAt == request.time;
       allow update: if request.auth != null &&
         request.auth.uid == documentId &&
         resource.data.role == 'provider' &&
-        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['services']) &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['services', 'onboardingComplete']) &&
         request.resource.data.services is list &&
         request.resource.data.services.size() >= 1 &&
         request.resource.data.services.size() <= 6 &&
@@ -75,13 +106,27 @@ service cloud.firestore {
           'Home service',
           'Construction',
           'Other local services'
-        ].toSet()).size() == 0;
+        ].toSet()).size() == 0 &&
+        request.resource.data.onboardingComplete is bool &&
+        request.resource.data.onboardingComplete == hasCompletedOnboarding(request.resource.data);
+      allow update: if request.auth != null &&
+        request.auth.uid == documentId &&
+        resource.data.role == 'provider' &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['onboardingComplete']) &&
+        request.resource.data.onboardingComplete is bool &&
+        request.resource.data.onboardingComplete == hasCompletedOnboarding(resource.data);
+      allow update: if isAdmin() &&
+        request.auth.uid != documentId &&
+        resource.data.role == 'provider' &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['approvalStatus']) &&
+        request.resource.data.approvalStatus in ['pending', 'approved', 'rejected'];
       allow update: if request.auth != null &&
         request.auth.uid == documentId &&
         resource.data.role == 'provider' &&
         resource.data.services is list &&
         resource.data.services.hasAny(['Transport']) &&
-        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['transportDetails']) &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['transportDetails', 'onboardingComplete']) &&
+        request.resource.data.onboardingComplete == true &&
         request.resource.data.transportDetails is map &&
         request.resource.data.transportDetails.keys().hasOnly([
           'service',
@@ -134,6 +179,7 @@ service cloud.firestore {
         return request.auth != null &&
           request.auth.uid == documentId &&
           get(/databases/$(database)/documents/providers/$(documentId)).data.role == 'provider' &&
+          providerIsApproved(get(/databases/$(database)/documents/providers/$(documentId)).data) &&
           get(/databases/$(database)/documents/providers/$(documentId)).data.services.hasAny(['Transport']);
       }
 
